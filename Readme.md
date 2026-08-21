@@ -615,7 +615,7 @@ This project is currently proprietary software developed for **Veyrivo Technolog
 
 Unauthorized copying, distribution, modification, or commercial use is not permitted without permission from the project owner.
 
-This Project is Created during internship program by **Veyrivo Technologies** created By **Umair Khan**
+This Project is Created during internship program by **Veyrivo Technologies** created By **Umair Khan**.
 
 ---
 
