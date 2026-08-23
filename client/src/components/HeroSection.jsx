@@ -1,6 +1,8 @@
+import { useNavigate } from "react-router";
 import heroSection from "../assets/HeroSection.jpeg";
 
 const HeroSection = () => {
+    const navigate = useNavigate();
     return (
         <section className="relative overflow-hidden">
             {/* Background Image */}
@@ -19,7 +21,7 @@ const HeroSection = () => {
 
                 {/* Content */}
                 <div className="relative z-10 container mx-auto h-full px-6 flex flex-col items-center justify-center text-center">
-                    
+
                     {/* Badge */}
                     <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-300 backdrop-blur-md">
                         <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
@@ -45,12 +47,14 @@ const HeroSection = () => {
                     {/* CTA Buttons */}
                     <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
                         <button
+                            onClick={() => navigate("/signup")}
                             className="rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 px-7 py-3.5 font-bold text-white shadow-lg shadow-blue-500/25 transition-all duration-300 hover:scale-105 hover:shadow-blue-500/40"
                         >
                             Get Started
                         </button>
 
                         <button
+                            onClick={() => navigate("/signup")}
                             className="rounded-full border border-white/20 bg-white/5 px-7 py-3.5 font-bold text-white backdrop-blur-md transition-all duration-300 hover:border-cyan-400/40 hover:bg-white/10"
                         >
                             Explore Features

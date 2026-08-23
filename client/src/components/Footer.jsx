@@ -5,8 +5,10 @@ import {
     // Twitter,
     // Github,
 } from "lucide-react";
+import { useNavigate } from "react-router";
 
 const Footer = () => {
+    const navigate = useNavigate();
     return (
         <footer className="relative overflow-hidden bg-slate-950 text-white">
 
@@ -37,7 +39,9 @@ const Footer = () => {
                             </p>
                         </div>
 
-                        <button className="group flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-7 py-3.5 font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-500/25">
+                        <button
+                            onClick={() => navigate("/signup")}
+                            className="group flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-7 py-3.5 font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-500/25">
                             Get Started
                             <ArrowRight
                                 size={18}

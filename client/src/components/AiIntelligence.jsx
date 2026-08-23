@@ -8,6 +8,7 @@ import {
 import { Link } from "react-router-dom";
 
 const AiIntelligence = () => {
+    
     return (
         <section className="bg-[#F8FAFC] py-16 md:py-20 lg:py-24">
             <div className="container mx-auto px-4">

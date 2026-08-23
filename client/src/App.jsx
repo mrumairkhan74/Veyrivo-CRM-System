@@ -18,9 +18,6 @@ const App = () => {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path='/login' element={<Login />} />
-        <Route path='/signup' element={<Signup />} />
-        <Route path='*' element={<Page404 />} />
         <Route />
         {/* Public Route */}
         <Route path="/" element={<PublicLayouts />}>
@@ -32,6 +29,9 @@ const App = () => {
           <Route index element={<AdminDashboard />} />
           {/* <Route path="users" element={<Users />} /> */}
         </Route>
+        <Route path='/login' element={<Login />} />
+        <Route path='/signup' element={<Signup />} />
+        <Route path='*' element={<Page404 />} />
       </Routes>
     </BrowserRouter>
   )
