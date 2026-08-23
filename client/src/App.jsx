@@ -10,11 +10,18 @@ import Home from './pages/public/Home'
 // In this user need to login to check out data
 import AdminLayouts from './layouts/AdminLayouts'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import Login from './pages/Login'
+import Signup from './pages/Signup'
+import Page404 from './pages/Page404'
 
 const App = () => {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path='/login' element={<Login />} />
+        <Route path='/signup' element={<Signup />} />
+        <Route path='*' element={<Page404 />} />
+        <Route />
         {/* Public Route */}
         <Route path="/" element={<PublicLayouts />}>
           <Route index element={<Home />} />
