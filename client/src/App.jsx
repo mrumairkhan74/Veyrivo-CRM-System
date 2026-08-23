@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 
 // Public pages with public layout. 
 // In this none login user can view as he want
@@ -18,7 +18,6 @@ const App = () => {
   return (
     <BrowserRouter>
       <Routes>
-        <Route />
         {/* Public Route */}
         <Route path="/" element={<PublicLayouts />}>
           <Route index element={<Home />} />

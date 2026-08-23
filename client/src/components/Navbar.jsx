@@ -37,12 +37,14 @@ const Navbar = () => {
             className="relative flex items-center justify-between border-b border-slate-200 bg-white px-4 py-4 text-slate-900 md:px-8"
         >
             {/* Logo */}
-            <Link
-                to="/"
-                className="text-xl font-bold tracking-tight text-[#0B1220]"
-            >
-                Veyrivo<span className="text-blue-600">CRM</span>
-            </Link>
+            <div className="flex gap-3 justify-center items-center">
+                <span className="text-3xl font-black bg-gradient-to-b from-cyan-500 to-purple-500 bg-clip-text text-transparent">V</span>
+                {" "} <h2 className="text-2xl font-bold tracking-tight">Veyrivo
+                    <span className="bg-gradient-to-b from-cyan-500 to-purple-500 bg-clip-text text-transparent">
+                        CRM
+                    </span>
+                </h2>
+            </div>
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex">
