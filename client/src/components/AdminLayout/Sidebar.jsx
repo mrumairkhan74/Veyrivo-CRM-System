@@ -16,7 +16,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         {
             name: "Dashboard",
             icon: <LayoutDashboard size={20} />,
-            path: "/dashboard",
+            path: "/admin",
         },
         {
             name: "Leads",
