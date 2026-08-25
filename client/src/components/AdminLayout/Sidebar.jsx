@@ -16,37 +16,37 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         {
             name: "Dashboard",
             icon: <LayoutDashboard size={20} />,
-            path: "/admin",
+            path: "/admin/",
         },
         {
             name: "Leads",
             icon: <Users size={20} />,
-            path: "/leads",
+            path: "/admin/leads",
         },
         {
             name: "Companies",
             icon: <Building2 size={20} />,
-            path: "/companies",
+            path: "/admin/companies",
         },
         {
             name: "Contacts",
             icon: <Contact size={20} />,
-            path: "/contacts",
+            path: "/admin/contacts",
         },
         {
             name: "Deals",
             icon: <Handshake size={20} />,
-            path: "/deals",
+            path: "/admin/deals",
         },
         {
             name: "Activities",
             icon: <CalendarCheck size={20} />,
-            path: "/activities",
+            path: "/admin/activities",
         },
         {
             name: "Analytics",
             icon: <BarChart3 size={20} />,
-            path: "/analytics",
+            path: "/admin/analytics",
         },
     ];
 
@@ -91,6 +91,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                             <li key={item.name}>
                                 <NavLink
                                     to={item.path}
+                                     end={item.path === "/admin/"}
                                     onClick={() => setIsOpen(false)}
                                     className={({ isActive }) =>
                                         `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${

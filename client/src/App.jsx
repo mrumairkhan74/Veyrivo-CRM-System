@@ -13,6 +13,7 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Page404 from './pages/Page404'
+import Leads from './pages/admin/Leads'
 
 const App = () => {
   return (
@@ -26,6 +27,7 @@ const App = () => {
         {/* Protected Admin Layout */}
         <Route path="/admin" element={<AdminLayouts />}>
           <Route index element={<AdminDashboard />} />
+          <Route path="leads" element={<Leads />} />
           {/* <Route path="users" element={<Users />} /> */}
         </Route>
         <Route path='/login' element={<Login />} />
