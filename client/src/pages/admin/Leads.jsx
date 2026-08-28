@@ -1,24 +1,65 @@
 import { Plus, Search, Filter } from "lucide-react";
 import CreateLead from "../../components/AdminLayout/leads/CreateLead";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import LeadTable from "../../components/AdminLayout/leads/LeadTable";
-import { leads } from "../../data/LeadData";
+import { leads as initialLeads } from "../../data/LeadData";
+import LeadDetails from "../../components/AdminLayout/leads/LeadDetails";
+import EditLead from "../../components/AdminLayout/leads/EditLead";
+import DeleteLead from "../../components/AdminLayout/leads/DeleteLead";
 const Leads = () => {
+    const [leads, setLeads] = useState(initialLeads)
     const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [selectedLead, setSelectedLead] = useState(null);
+    const [isEditOpen, setIsEditOpen] = useState(false);
+    const [deleteLead, setDeleteLead] = useState(null);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+
 
     const [filters, setFilters] = useState({
         status: "",
         temperature: "",
         source: "",
     });
+
+
+    // Search & Filter 
     const filteredLeads = leads.filter((lead) => {
-        return (
+        const search = searchTerm.toLowerCase();
+
+        const matchesSearch =
+            lead.title.toLowerCase().includes(search) ||
+            lead.company.toLowerCase().includes(search) ||
+            lead.service.toLowerCase().includes(search) ||
+            lead.email.toLowerCase().includes(search);
+
+        const matchesFilters =
             (!filters.status || lead.status === filters.status) &&
             (!filters.temperature || lead.temperature === filters.temperature) &&
-            (!filters.source || lead.source === filters.source)
-        );
+            (!filters.source || lead.source === filters.source);
+
+        return matchesSearch && matchesFilters;
     });
+
+    // Pages 
+
+    const leadsPerPage = 5;
+
+    const totalPages = Math.ceil(filteredLeads.length / leadsPerPage);
+
+    const startIndex = (currentPage - 1) * leadsPerPage;
+
+    const paginatedLeads = filteredLeads.slice(
+        startIndex,
+        startIndex + leadsPerPage
+    );
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, filters]);
+
     return (
         <section className="w-full">
 
@@ -56,6 +97,8 @@ const Leads = () => {
 
                     <input
                         type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder="Search by name, company, email..."
                         className="w-full rounded-lg border border-slate-200 py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                     />
@@ -155,7 +198,96 @@ const Leads = () => {
             )}
 
             {/* Leads Table - Next Step */}
-            <LeadTable leads={filteredLeads} />
+            <LeadTable
+                leads={paginatedLeads}
+                onView={(lead) => setSelectedLead(lead)}
+                onEdit={(lead) => {
+                    setSelectedLead(lead);
+                    setIsEditOpen(true);
+                }}
+                onDelete={(lead) => {
+                    setDeleteLead(lead);
+                }}
+            />
+            {/* Pagination Row */}
+            <div className="mt-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+
+                <p className="text-sm text-slate-500">
+                    Showing{" "}
+                    <span className="font-semibold text-slate-700">
+                        {filteredLeads.length === 0 ? 0 : startIndex + 1}
+                    </span>
+                    {" "}to{" "}
+                    <span className="font-semibold text-slate-700">
+                        {Math.min(startIndex + leadsPerPage, filteredLeads.length)}
+                    </span>
+                    {" "}of{" "}
+                    <span className="font-semibold text-slate-700">
+                        {filteredLeads.length}
+                    </span>
+                    {" "}leads
+                </p>
+
+                <div className="flex items-center gap-2">
+
+                    <button
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage((prev) => prev - 1)}
+                        className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                        Previous
+                    </button>
+
+                    <span className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-600">
+                        {currentPage} / {totalPages || 1}
+                    </span>
+
+                    <button
+                        disabled={currentPage === totalPages || totalPages === 0}
+                        onClick={() => setCurrentPage((prev) => prev + 1)}
+                        className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                        Next
+                    </button>
+
+                </div>
+            </div>
+
+            {/* View Lead Detail Box */}
+            {selectedLead && (
+                <LeadDetails
+                    lead={selectedLead}
+                    setIsOpen={() => setSelectedLead(null)}
+                />
+            )}
+
+            {/* Updated Lead Detail */}
+            {isEditOpen && selectedLead && (
+                <EditLead
+                    lead={selectedLead}
+                    setIsOpen={setIsEditOpen}
+                    onSubmit={(updatedLead) => {
+                        console.log("Updated Lead:", updatedLead);
+
+                        setIsEditOpen(false);
+                        setSelectedLead(null);
+                    }}
+                />
+            )}
+            {deleteLead && (
+                <DeleteLead
+                    lead={deleteLead}
+                    setIsOpen={() => setDeleteLead(null)}
+                    onConfirm={(lead) => {
+                        console.log("Delete:", lead);
+                        setLeads(prev => prev.filter((i) => i.id !== lead.id));
+                        setCurrentPage(1);
+                        // Backend/API deletion will come here later.
+
+                        setDeleteLead(null);
+                    }}
+                />
+            )}
         </section>
     );
 };
