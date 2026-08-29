@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { Plus, Search, Filter } from "lucide-react";
 import CreateLead from "../../components/AdminLayout/leads/CreateLead";
 import { useState, useEffect } from "react";
@@ -57,6 +58,7 @@ const Leads = () => {
     );
 
     useEffect(() => {
+
         setCurrentPage(1);
     }, [searchTerm, filters]);
 
@@ -118,7 +120,11 @@ const Leads = () => {
 
             {
                 isOpen && (
-                    <CreateLead setIsOpen={setIsOpen} />
+                    <CreateLead
+                        setIsOpen={setIsOpen}
+                        onCreate={(newLead) => {
+                            setLeads((prev) => [newLead, ...prev]);
+                        }} />
                 )
             }
             {/* Filter Logic */}

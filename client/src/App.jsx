@@ -14,6 +14,8 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Page404 from './pages/Page404'
 import Leads from './pages/admin/Leads'
+import Companies from './pages/admin/Companies'
+import Contacts from './pages/admin/Contacts'
 
 const App = () => {
   return (
@@ -28,6 +30,8 @@ const App = () => {
         <Route path="/admin" element={<AdminLayouts />}>
           <Route index element={<AdminDashboard />} />
           <Route path="leads" element={<Leads />} />
+          <Route path="companies" element={<Companies />} />
+          <Route path="contacts" element={<Contacts />} />
           {/* <Route path="users" element={<Users />} /> */}
         </Route>
         <Route path='/login' element={<Login />} />
