@@ -1,15 +1,16 @@
 
-import  { useState } from 'react';
+import  { useState, useEffect } from 'react';
 import { Plus, Search, Filter, X } from 'lucide-react';
 import CompanyTable from '../../components/AdminLayout/company/CompanyTable';
 import CompanyForm from '../../components/AdminLayout/company/CompanyForm';
 import { companies as initailCompanies } from '../../data/CompaniesData';
+import { industries, sources, owners } from '../../data/ReferenceData';
+
 const Companies = () => {
     const [companies, setCompanies] = useState(initailCompanies);
-    
-    // eslint-disable-next-line no-unused-vars
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [filters, setFilters] = useState({
         status: 'all',
         company_size: 'all',
@@ -33,14 +34,13 @@ const Companies = () => {
     });
     const [formLoading, setFormLoading] = useState(false);
 
-    // These will come from your actual data/API
-    const industries = []; // Your industries data
-    const sources = []; // Your sources data
-    const owners = []; // Your owners data
-
-    const handlePageChange = (page) => {
-        setPagination({ ...pagination, currentPage: page });
-    };
+    // Debounced search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
 
     const handleSort = (field, direction) => {
         setSort({ field, direction });
@@ -48,7 +48,7 @@ const Companies = () => {
 
     const handleFilterChange = (key, value) => {
         setFilters({ ...filters, [key]: value });
-        setPagination({ ...pagination, currentPage: 1 });
+        setPagination((prev) => ({ ...prev, currentPage: 1 }));
     };
 
     const clearFilters = () => {
@@ -58,7 +58,7 @@ const Companies = () => {
             industry: 'all'
         });
         setSearchTerm('');
-        setPagination({ ...pagination, currentPage: 1 });
+        setPagination((prev) => ({ ...prev, currentPage: 1 }));
     };
 
     const hasActiveFilters = () => {
@@ -86,16 +86,22 @@ const Companies = () => {
 
     const handleSave = async (data) => {
         setFormLoading(true);
+        setLoading(true);
         try {
             // Your save logic here
             console.log('Saving company:', data);
             // On success:
-            // setCompanies(prev => [...prev, { ...data, id: Date.now().toString() }]);
+            if (modalState.mode === 'create') {
+                setCompanies(prev => [{ ...data, id: `company-${Date.now()}`, created_at: new Date().toISOString() }, ...prev]);
+            } else {
+                setCompanies(prev => prev.map(c => c.id === modalState.company.id ? { ...c, ...data, updated_at: new Date().toISOString() } : c));
+            }
             closeModal();
         } catch (error) {
             console.error('Error saving company:', error);
         } finally {
             setFormLoading(false);
+            setLoading(false);
         }
     };
 
@@ -122,6 +128,32 @@ const Companies = () => {
             company: null
         });
     };
+
+    // Filter companies based on search and filters
+    const filteredCompanies = companies.filter((company) => {
+        const search = debouncedSearch.toLowerCase();
+
+        const matchesSearch =
+            company.name.toLowerCase().includes(search) ||
+            company.domain?.toLowerCase().includes(search) ||
+            company.email?.toLowerCase().includes(search) ||
+            company.city?.toLowerCase().includes(search);
+
+        const matchesFilters =
+            (filters.status === 'all' || company.status === filters.status) &&
+            (filters.company_size === 'all' || company.company_size === filters.company_size) &&
+            (filters.industry === 'all' || company.industry_id === filters.industry);
+
+        return matchesSearch && matchesFilters;
+    });
+
+    // Pagination for filtered companies
+    const paginatedCompanies = filteredCompanies.slice(
+        (pagination.currentPage - 1) * pagination.limit,
+        pagination.currentPage * pagination.limit
+    );
+
+    const totalPages = Math.ceil(filteredCompanies.length / pagination.limit) || 1;
 
     return (
         <div className="space-y-6">
@@ -250,25 +282,27 @@ const Companies = () => {
 
             {/* Company Table */}
             <CompanyTable
-                companies={companies}
+                companies={paginatedCompanies}
                 loading={loading}
                 onView={(company) => openEditModal(company)}
                 onEdit={(company) => openEditModal(company)}
                 onDelete={(company) => {
-                    if (confirm(`Are you sure you want to delete ${company.name}?`)) {
+                    setLoading(true);
+                    setTimeout(() => {
                         setCompanies(prev => prev.filter(c => c.id !== company.id));
-                    }
+                        setLoading(false);
+                    }, 300);
                 }}
                 pagination={{
                     currentPage: pagination.currentPage,
-                    totalPages: pagination.totalPages,
-                    total: pagination.total,
+                    totalPages: totalPages,
+                    total: filteredCompanies.length,
+                    limit: pagination.limit,
                     filters: Object.fromEntries(
-                        // eslint-disable-next-line no-unused-vars
-                        Object.entries(filters).filter(([_, v]) => v !== 'all')
+                        Object.entries(filters).filter(([, v]) => v !== 'all')
                     )
                 }}
-                onPageChange={handlePageChange}
+                onPageChange={(page) => setPagination(prev => ({ ...prev, currentPage: page }))}
                 onSort={handleSort}
                 sortField={sort.field}
                 sortDirection={sort.direction}
