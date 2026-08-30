@@ -18,6 +18,7 @@ const Contacts = () => {
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filters, setFilters] = useState({
     status: 'all',
     company_id: 'all',
@@ -53,9 +54,9 @@ const Contacts = () => {
       // Start with all contacts
       let filtered = [...ContactsData];
 
-      // Apply search
-      if (searchTerm) {
-        filtered = searchContacts(searchTerm);
+      // Apply search (using debounced value)
+      if (debouncedSearch) {
+        filtered = searchContacts(debouncedSearch);
       }
 
       // Apply filters
@@ -164,6 +165,14 @@ const Contacts = () => {
       filters.consent_status !== 'all' ||
       searchTerm !== '';
   };
+
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const openCreateModal = () => {
     setModalState({
@@ -446,9 +455,11 @@ const Contacts = () => {
         onView={(contact) => openEditModal(contact)}
         onEdit={(contact) => openEditModal(contact)}
         onDelete={(contact) => {
-          if (confirm(`Are you sure you want to delete ${contact.first_name} ${contact.last_name}?`)) {
+          setLoading(true);
+          setTimeout(() => {
             setContacts(prev => prev.filter(c => c.id !== contact.id));
-          }
+            setLoading(false);
+          }, 300);
         }}
         pagination={{
           currentPage: pagination.currentPage,
@@ -456,7 +467,7 @@ const Contacts = () => {
           total: pagination.total,
           limit: pagination.limit,
           filters: Object.fromEntries(
-            Object.entries(filters).filter(([_, v]) => v !== 'all')
+            Object.entries(filters).filter(([, v]) => v !== 'all')
           )
         }}
         onPageChange={handlePageChange}

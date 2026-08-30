@@ -1,14 +1,12 @@
-
-import  { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Filter, X } from 'lucide-react';
 import CompanyTable from '../../components/AdminLayout/company/CompanyTable';
 import CompanyForm from '../../components/AdminLayout/company/CompanyForm';
-import { companies as initailCompanies } from '../../data/CompaniesData';
+import { companies as initialCompanies } from '../../data/CompaniesData';
 import { industries, sources, owners } from '../../data/ReferenceData';
 
 const Companies = () => {
-    const [companies, setCompanies] = useState(initailCompanies);
-    const [loading, setLoading] = useState(false);
+    const [companies, setCompanies] = useState(initialCompanies);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [filters, setFilters] = useState({
@@ -18,8 +16,6 @@ const Companies = () => {
     });
     const [pagination, setPagination] = useState({
         currentPage: 1,
-        totalPages: 1,
-        total: 0,
         limit: 10
     });
     const [sort, setSort] = useState({
@@ -42,13 +38,80 @@ const Companies = () => {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
+    // Filter and sort companies
+    const filteredAndSortedCompanies = useMemo(() => {
+        let result = [...companies];
+
+        // Apply search filter
+        if (debouncedSearch) {
+            const term = debouncedSearch.toLowerCase();
+            result = result.filter(company =>
+                company.name?.toLowerCase().includes(term) ||
+                company.domain?.toLowerCase().includes(term) ||
+                company.email?.toLowerCase().includes(term) ||
+                company.website?.toLowerCase().includes(term)
+            );
+        }
+
+        // Apply status filter
+        if (filters.status !== 'all') {
+            result = result.filter(company => company.status === filters.status);
+        }
+
+        // Apply company size filter
+        if (filters.company_size !== 'all') {
+            result = result.filter(company => company.company_size === filters.company_size);
+        }
+
+        // Apply industry filter
+        if (filters.industry !== 'all') {
+            result = result.filter(company => company.industry_id === filters.industry);
+        }
+
+        // Apply sorting
+        result.sort((a, b) => {
+            let aVal = a[sort.field] || '';
+            let bVal = b[sort.field] || '';
+            
+            if (sort.field === 'name') {
+                aVal = a.name?.toLowerCase() || '';
+                bVal = b.name?.toLowerCase() || '';
+            }
+            
+            if (typeof aVal === 'string') {
+                aVal = aVal.toLowerCase();
+                bVal = bVal.toLowerCase();
+            }
+            
+            if (aVal < bVal) return sort.direction === 'asc' ? -1 : 1;
+            if (aVal > bVal) return sort.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        return result;
+    }, [companies, debouncedSearch, filters, sort]);
+
+    // Pagination derived from filtered data
+    const totalPages = Math.ceil(filteredAndSortedCompanies.length / pagination.limit) || 1;
+    const currentPageData = useMemo(() => {
+        const startIndex = (pagination.currentPage - 1) * pagination.limit;
+        const endIndex = Math.min(startIndex + pagination.limit, filteredAndSortedCompanies.length);
+        return filteredAndSortedCompanies.slice(startIndex, endIndex);
+    }, [filteredAndSortedCompanies, pagination.currentPage, pagination.limit]);
+
+    const handlePageChange = (page) => {
+        if (page < 1 || page > totalPages) return;
+        setPagination(prev => ({ ...prev, currentPage: page }));
+    };
+
     const handleSort = (field, direction) => {
         setSort({ field, direction });
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
     };
 
     const handleFilterChange = (key, value) => {
-        setFilters({ ...filters, [key]: value });
-        setPagination((prev) => ({ ...prev, currentPage: 1 }));
+        setFilters(prev => ({ ...prev, [key]: value }));
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
     };
 
     const clearFilters = () => {
@@ -58,7 +121,7 @@ const Companies = () => {
             industry: 'all'
         });
         setSearchTerm('');
-        setPagination((prev) => ({ ...prev, currentPage: 1 }));
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
     };
 
     const hasActiveFilters = () => {
@@ -86,22 +149,34 @@ const Companies = () => {
 
     const handleSave = async (data) => {
         setFormLoading(true);
-        setLoading(true);
         try {
-            // Your save logic here
             console.log('Saving company:', data);
-            // On success:
+            
+            // Simulate API call
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             if (modalState.mode === 'create') {
-                setCompanies(prev => [{ ...data, id: `company-${Date.now()}`, created_at: new Date().toISOString() }, ...prev]);
+                const newCompany = {
+                    ...data,
+                    id: `company-${crypto.randomUUID()}`,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+                setCompanies(prev => [newCompany, ...prev]);
             } else {
-                setCompanies(prev => prev.map(c => c.id === modalState.company.id ? { ...c, ...data, updated_at: new Date().toISOString() } : c));
+                setCompanies(prev =>
+                    prev.map(c =>
+                        c.id === modalState.company.id
+                            ? { ...c, ...data, updated_at: new Date().toISOString() }
+                            : c
+                    )
+                );
             }
             closeModal();
         } catch (error) {
             console.error('Error saving company:', error);
         } finally {
             setFormLoading(false);
-            setLoading(false);
         }
     };
 
@@ -109,10 +184,12 @@ const Companies = () => {
         if (!confirm('Are you sure you want to delete this company?')) return;
         setFormLoading(true);
         try {
-            // Your delete logic here
             console.log('Deleting company:', modalState.company);
-            // On success:
-            // setCompanies(prev => prev.filter(c => c.id !== modalState.company.id));
+            
+            // Simulate API call
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            setCompanies(prev => prev.filter(c => c.id !== modalState.company.id));
             closeModal();
         } catch (error) {
             console.error('Error deleting company:', error);
@@ -128,32 +205,6 @@ const Companies = () => {
             company: null
         });
     };
-
-    // Filter companies based on search and filters
-    const filteredCompanies = companies.filter((company) => {
-        const search = debouncedSearch.toLowerCase();
-
-        const matchesSearch =
-            company.name.toLowerCase().includes(search) ||
-            company.domain?.toLowerCase().includes(search) ||
-            company.email?.toLowerCase().includes(search) ||
-            company.city?.toLowerCase().includes(search);
-
-        const matchesFilters =
-            (filters.status === 'all' || company.status === filters.status) &&
-            (filters.company_size === 'all' || company.company_size === filters.company_size) &&
-            (filters.industry === 'all' || company.industry_id === filters.industry);
-
-        return matchesSearch && matchesFilters;
-    });
-
-    // Pagination for filtered companies
-    const paginatedCompanies = filteredCompanies.slice(
-        (pagination.currentPage - 1) * pagination.limit,
-        pagination.currentPage * pagination.limit
-    );
-
-    const totalPages = Math.ceil(filteredCompanies.length / pagination.limit) || 1;
 
     return (
         <div className="space-y-6">
@@ -282,27 +333,23 @@ const Companies = () => {
 
             {/* Company Table */}
             <CompanyTable
-                companies={paginatedCompanies}
-                loading={loading}
+                companies={currentPageData}
+                loading={false}
                 onView={(company) => openEditModal(company)}
                 onEdit={(company) => openEditModal(company)}
                 onDelete={(company) => {
-                    setLoading(true);
-                    setTimeout(() => {
-                        setCompanies(prev => prev.filter(c => c.id !== company.id));
-                        setLoading(false);
-                    }, 300);
+                    setCompanies(prev => prev.filter(c => c.id !== company.id));
                 }}
                 pagination={{
                     currentPage: pagination.currentPage,
-                    totalPages: totalPages,
-                    total: filteredCompanies.length,
+                    totalPages,
+                    total: filteredAndSortedCompanies.length,
                     limit: pagination.limit,
                     filters: Object.fromEntries(
                         Object.entries(filters).filter(([, v]) => v !== 'all')
                     )
                 }}
-                onPageChange={(page) => setPagination(prev => ({ ...prev, currentPage: page }))}
+                onPageChange={handlePageChange}
                 onSort={handleSort}
                 sortField={sort.field}
                 sortDirection={sort.direction}
