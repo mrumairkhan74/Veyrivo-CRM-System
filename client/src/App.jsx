@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
 // Public pages with public layout. 
 // In this none login user can view as he want
@@ -28,7 +28,8 @@ const App = () => {
         </Route>
         {/* Protected Admin Layout */}
         <Route path="/admin" element={<AdminLayouts />}>
-          <Route index element={<AdminDashboard />} />
+          <Route index element={<Navigate to="/admin/" replace />} />
+          <Route path="/" element={<AdminDashboard />} />
           <Route path="leads" element={<Leads />} />
           <Route path="companies" element={<Companies />} />
           <Route path="contacts" element={<Contacts />} />

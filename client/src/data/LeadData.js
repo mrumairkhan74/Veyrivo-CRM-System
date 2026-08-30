@@ -17,6 +17,15 @@ export const leads = [
         budget_range: "high",
         owner: "Admin",
         created_at: "2026-08-25",
+        activity_timeline: [
+            {
+                type: "note",
+                title: "Lead Created",
+                description: "Lead added from LinkedIn inquiry",
+                date: "Aug 25, 2026",
+                by: "Admin"
+            }
+        ],
     },
     {
         id: "lead-002",
@@ -36,6 +45,29 @@ export const leads = [
         budget_range: "high",
         owner: "Admin",
         created_at: "2026-08-24",
+        activity_timeline: [
+            {
+                type: "note",
+                title: "Lead Created",
+                description: "Referral from existing client",
+                date: "Aug 24, 2026",
+                by: "Admin"
+            },
+            {
+                type: "call",
+                title: "Discovery Call",
+                description: "Discussed requirements for custom CRM with sales automation",
+                date: "Aug 25, 2026",
+                by: "Admin"
+            },
+            {
+                type: "email",
+                title: "Sent Proposal",
+                description: "Shared initial proposal with pricing tiers",
+                date: "Aug 26, 2026",
+                by: "Admin"
+            }
+        ],
     },
     {
         id: "lead-003",

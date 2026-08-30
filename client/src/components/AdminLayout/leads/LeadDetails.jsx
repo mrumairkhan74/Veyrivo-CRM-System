@@ -12,9 +12,14 @@ import {
     UserRound,
     FileText,
     Sparkles,
+    Pencil,
+    Clock,
+    MessageSquare,
+    Phone,
+    MapPin,
 } from "lucide-react";
 
-const LeadDetails = ({ lead, setIsOpen }) => {
+const LeadDetails = ({ lead, setIsOpen, onEdit }) => {
     if (!lead) return null;
 
     const getStatusStyle = (status) => {
@@ -59,12 +64,25 @@ const LeadDetails = ({ lead, setIsOpen }) => {
                         </h2>
                     </div>
 
-                    <button
-                        onClick={() => setIsOpen(false)}
-                        className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-                    >
-                        <X size={22} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {onEdit && (
+                            <button
+                                onClick={() => onEdit(lead)}
+                                className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-3 py-1.5 text-sm font-medium text-white transition hover:from-cyan-600 hover:to-purple-700"
+                            >
+                                <Pencil size={15} />
+                                Edit
+                            </button>
+                        )}
+
+                        <button
+                            onClick={() => setIsOpen(false)}
+                            className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                        >
+                            <X size={22} />
+                        </button>
+
+                    </div>
 
                 </div>
 
@@ -306,6 +324,36 @@ const LeadDetails = ({ lead, setIsOpen }) => {
 
                     </div>
 
+                    {/* Activity Timeline */}
+                    <div className="mt-6 rounded-xl border border-slate-200 p-5">
+
+                        <div className="mb-5 flex items-center gap-2">
+                            <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
+                                <Clock size={18} />
+                            </div>
+
+                            <h3 className="font-bold text-slate-800">
+                                Activity Timeline
+                            </h3>
+                        </div>
+
+                        <div className="relative pl-4 border-l border-slate-200">
+                            {lead.activity_timeline && lead.activity_timeline.length > 0 ? (
+                                lead.activity_timeline.map((activity, index) => (
+                                    <ActivityItem key={index} activity={activity} isLast={index === lead.activity_timeline.length - 1} />
+                                ))
+                            ) : (
+                                <div className="flex items-center justify-center h-24">
+                                    <div className="text-center">
+                                        <p className="text-slate-500">No activity recorded yet.</p>
+                                        <p className="mt-1 text-sm text-slate-400">Activities will appear here after follow-ups, calls, and meetings.</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                    </div>
+
                 </div>
 
                 {/* Footer */}
@@ -361,6 +409,88 @@ const InfoBox = ({ icon, label, value }) => {
             <p className="mt-2 text-sm font-semibold capitalize text-slate-700">
                 {value}
             </p>
+        </div>
+    );
+};
+
+const ActivityItem = ({ activity, isLast }) => {
+    const getActivityIcon = (type) => {
+        switch (type) {
+            case "call":
+                return <Phone size={14} className="text-green-600" />;
+            case "meeting":
+                return <CalendarDays size={14} className="text-blue-600" />;
+            case "email":
+                return <MessageSquare size={14} className="text-purple-600" />;
+            case "note":
+                return <FileText size={14} className="text-slate-600" />;
+            case "follow_up":
+                return <Clock size={14} className="text-orange-600" />;
+            default:
+                return <MapPin size={14} className="text-slate-600" />;
+        }
+    };
+
+    const getActivityColor = (type) => {
+        switch (type) {
+            case "call":
+                return "bg-green-50 text-green-600";
+            case "meeting":
+                return "bg-blue-50 text-blue-600";
+            case "email":
+                return "bg-purple-50 text-purple-600";
+            case "note":
+                return "bg-slate-50 text-slate-600";
+            case "follow_up":
+                return "bg-orange-50 text-orange-600";
+            default:
+                return "bg-slate-50 text-slate-600";
+        }
+    };
+
+    return (
+        <div className="relative mb-6 last:mb-0">
+            {/* Timeline dot and line */}
+            <div className="absolute left-[-36px] top-0 flex h-full items-start">
+                <div className="relative flex h-full w-8 items-start justify-center">
+                    <span className={`absolute left-1/2 top-0 -translate-x-1/2 h-2.5 w-2.5 rounded-full border-2 border-white ${getActivityColor(activity.type).split(' ')[0]}`} />
+                    {!isLast && (
+                        <span className="absolute left-1/2 top-2.5 -translate-x-1/2 h-full w-0.5 bg-slate-200" />
+                    )}
+                </div>
+            </div>
+
+            {/* Activity content */}
+            <div className="ml-4">
+                <div className="flex items-start gap-3">
+                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${getActivityColor(activity.type)}`}>
+                        {getActivityIcon(activity.type)}
+                    </div>
+
+                    <div className="min-w-0 flex-1 pt-1">
+                        <div className="flex items-center justify-between gap-2">
+                            <h4 className="text-sm font-semibold text-slate-800">
+                                {activity.title}
+                            </h4>
+                            <span className="text-xs text-slate-400 whitespace-nowrap">
+                                {activity.date}
+                            </span>
+                        </div>
+
+                        {activity.description && (
+                            <p className="mt-1 text-sm text-slate-500">
+                                {activity.description}
+                            </p>
+                        )}
+
+                        {activity.by && (
+                            <p className="mt-1 text-xs text-slate-400">
+                                By {activity.by}
+                            </p>
+                        )}
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };

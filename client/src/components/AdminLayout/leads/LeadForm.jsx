@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 
@@ -21,10 +22,45 @@ const emptyLead = {
     next_follow_up_at: "",
 };
 
-const EditLead = ({ lead = null, setIsOpen, onSubmit }) => {
-    const [formData, setFormData] = useState(emptyLead);
+const statusOptions = [
+    ["new", "New"],
+    ["contacted", "Contacted"],
+    ["qualified", "Qualified"],
+    ["nurture", "Nurture"],
+    ["lost", "Lost"],
+];
 
-    const isEditMode = Boolean(lead);
+const temperatureOptions = [
+    ["hot", "Hot"],
+    ["warm", "Warm"],
+    ["cold", "Cold"],
+    ["unknown", "Unknown"],
+];
+
+const timelineOptions = [
+    ["urgent", "Urgent"],
+    ["one_month", "One Month"],
+    ["three_months", "Three Months"],
+    ["exploring", "Exploring"],
+];
+
+const budgetOptions = [
+    ["low", "Low"],
+    ["medium", "Medium"],
+    ["high", "High"],
+    ["unknown", "Unknown"],
+];
+
+const currencyOptions = [
+    ["USD", "USD"],
+    ["EUR", "EUR"],
+    ["GBP", "GBP"],
+    ["PKR", "PKR"],
+];
+
+const LeadForm = ({ mode = "create", lead = null, setIsOpen, onSubmit }) => {
+    const [formData, setFormData] = useState(emptyLead);
+    const isEditMode = mode === "edit";
 
     useEffect(() => {
         if (lead) {
@@ -160,13 +196,7 @@ const EditLead = ({ lead = null, setIsOpen, onSubmit }) => {
                                 name="status"
                                 value={formData.status}
                                 onChange={handleChange}
-                                options={[
-                                    ["new", "New"],
-                                    ["contacted", "Contacted"],
-                                    ["qualified", "Qualified"],
-                                    ["nurture", "Nurture"],
-                                    ["lost", "Lost"],
-                                ]}
+                                options={statusOptions}
                             />
 
                             <Select
@@ -174,12 +204,7 @@ const EditLead = ({ lead = null, setIsOpen, onSubmit }) => {
                                 name="temperature"
                                 value={formData.temperature}
                                 onChange={handleChange}
-                                options={[
-                                    ["hot", "Hot"],
-                                    ["warm", "Warm"],
-                                    ["cold", "Cold"],
-                                    ["unknown", "Unknown"],
-                                ]}
+                                options={temperatureOptions}
                             />
 
                             <Input
@@ -251,12 +276,12 @@ const EditLead = ({ lead = null, setIsOpen, onSubmit }) => {
                                 onChange={handleChange}
                             />
 
-                            <Input
+                            <Select
                                 label="Currency"
                                 name="currency"
                                 value={formData.currency}
                                 onChange={handleChange}
-                                maxLength="3"
+                                options={currencyOptions}
                             />
 
                             <Select
@@ -264,12 +289,7 @@ const EditLead = ({ lead = null, setIsOpen, onSubmit }) => {
                                 name="timeline"
                                 value={formData.timeline}
                                 onChange={handleChange}
-                                options={[
-                                    ["urgent", "Urgent"],
-                                    ["one_month", "One Month"],
-                                    ["three_months", "Three Months"],
-                                    ["exploring", "Exploring"],
-                                ]}
+                                options={timelineOptions}
                             />
 
                             <Select
@@ -277,12 +297,7 @@ const EditLead = ({ lead = null, setIsOpen, onSubmit }) => {
                                 name="budget_range"
                                 value={formData.budget_range}
                                 onChange={handleChange}
-                                options={[
-                                    ["low", "Low"],
-                                    ["medium", "Medium"],
-                                    ["high", "High"],
-                                    ["unknown", "Unknown"],
-                                ]}
+                                options={budgetOptions}
                             />
 
                         </div>
@@ -384,4 +399,4 @@ const Select = ({
     );
 };
 
-export default EditLead;
+export default LeadForm;

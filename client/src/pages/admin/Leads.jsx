@@ -1,19 +1,19 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { Plus, Search, Filter } from "lucide-react";
-import CreateLead from "../../components/AdminLayout/leads/CreateLead";
 import { useState, useEffect } from "react";
 import LeadTable from "../../components/AdminLayout/leads/LeadTable";
 import { leads as initialLeads } from "../../data/LeadData";
 import LeadDetails from "../../components/AdminLayout/leads/LeadDetails";
-import EditLead from "../../components/AdminLayout/leads/EditLead";
+import LeadForm from "../../components/AdminLayout/leads/LeadForm";
 import DeleteLead from "../../components/AdminLayout/leads/DeleteLead";
 const Leads = () => {
     const [leads, setLeads] = useState(initialLeads)
-    const [isOpen, setIsOpen] = useState(false);
+    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [formMode, setFormMode] = useState("create");
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedLead, setSelectedLead] = useState(null);
-    const [isEditOpen, setIsEditOpen] = useState(false);
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [deleteLead, setDeleteLead] = useState(null);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -79,8 +79,11 @@ const Leads = () => {
                 </div>
 
                 <button
-                    onClick={() => setIsOpen(!isOpen)}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700">
+                    onClick={() => {
+                        setFormMode("create");
+                        setIsFormOpen(true);
+                    }}
+                    className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-2.5 text-sm font-medium text-white transition hover:from-cyan-600 hover:to-purple-700">
                     <Plus size={18} />
                     Add Lead
                 </button>
@@ -118,12 +121,13 @@ const Leads = () => {
             </div>
 
 
-            {
-                isOpen && (
-                    <CreateLead
-                        setIsOpen={setIsOpen}
-                        onCreate={(newLead) => {
+            {isFormOpen && formMode === "create" && (
+                    <LeadForm
+                        mode="create"
+                        setIsOpen={setIsFormOpen}
+                        onSubmit={(newLead) => {
                             setLeads((prev) => [newLead, ...prev]);
+                            setIsFormOpen(false);
                         }} />
                 )
             }
@@ -206,10 +210,14 @@ const Leads = () => {
             {/* Leads Table - Next Step */}
             <LeadTable
                 leads={paginatedLeads}
-                onView={(lead) => setSelectedLead(lead)}
+                onView={(lead) => {
+                    setSelectedLead(lead);
+                    setIsDetailsOpen(true);
+                }}
                 onEdit={(lead) => {
                     setSelectedLead(lead);
-                    setIsEditOpen(true);
+                    setFormMode("edit");
+                    setIsFormOpen(true);
                 }}
                 onDelete={(lead) => {
                     setDeleteLead(lead);
@@ -260,22 +268,31 @@ const Leads = () => {
             </div>
 
             {/* View Lead Detail Box */}
-            {selectedLead && (
+            {isDetailsOpen && selectedLead && (
                 <LeadDetails
                     lead={selectedLead}
-                    setIsOpen={() => setSelectedLead(null)}
+                    setIsOpen={() => setIsDetailsOpen(false)}
+                    onEdit={(lead) => {
+                        setIsDetailsOpen(false);
+                        setSelectedLead(lead);
+                        setFormMode("edit");
+                        setIsFormOpen(true);
+                    }}
                 />
             )}
 
             {/* Updated Lead Detail */}
-            {isEditOpen && selectedLead && (
-                <EditLead
+            {isFormOpen && formMode === "edit" && selectedLead && (
+                <LeadForm
+                    mode="edit"
                     lead={selectedLead}
-                    setIsOpen={setIsEditOpen}
+                    setIsOpen={setIsFormOpen}
                     onSubmit={(updatedLead) => {
                         console.log("Updated Lead:", updatedLead);
-
-                        setIsEditOpen(false);
+                        setLeads((prev) =>
+                            prev.map((l) => (l.id === selectedLead.id ? { ...l, ...updatedLead } : l))
+                        );
+                        setIsFormOpen(false);
                         setSelectedLead(null);
                     }}
                 />
