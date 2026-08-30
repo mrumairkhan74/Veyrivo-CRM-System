@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     Plus, Users,
     Handshake,
@@ -11,8 +11,18 @@ import RecentLeads from "../../components/AdminLayout/RecentLeads";
 import UpcomingActivities from "../../components/AdminLayout/UpcomingActivities";
 import LeadSources from "../../components/AdminLayout/LeadSource";
 import AIInsights from "../../components/AdminLayout/AIInsight";
+import { DashboardSkeleton } from "../../components/AdminLayout/Skeleton";
+
 const AdminDashboard = () => {
     const [activeFilter, setActiveFilter] = useState("7 Days");
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setIsLoading(false);
+        }, 800);
+        return () => clearTimeout(timer);
+    }, []);
 
     const hour = new Date().getHours();
 
@@ -55,6 +65,10 @@ const AdminDashboard = () => {
             icon: <TrendingUp />
         },
     ]
+
+    if (isLoading) {
+        return <DashboardSkeleton />;
+    }
 
     return (
         <section className="min-h-screen w-full rounded-md border border-slate-200 bg-gradient-to-br from-cyan-200/20 to-purple-200/20 p-2 shadow-md md:p-4">

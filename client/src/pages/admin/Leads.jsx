@@ -6,6 +6,8 @@ import { leads as initialLeads } from "../../data/LeadData";
 import LeadDetails from "../../components/AdminLayout/leads/LeadDetails";
 import LeadForm from "../../components/AdminLayout/leads/LeadForm";
 import DeleteLead from "../../components/AdminLayout/leads/DeleteLead";
+import { TableSkeleton } from "../../components/AdminLayout/Skeleton";
+
 const Leads = () => {
     const [leads, setLeads] = useState(initialLeads)
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -16,6 +18,7 @@ const Leads = () => {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [deleteLead, setDeleteLead] = useState(null);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
 
 
@@ -26,9 +29,19 @@ const Leads = () => {
     });
 
 
+    // Debounced search
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
     // Search & Filter 
     const filteredLeads = leads.filter((lead) => {
-        const search = searchTerm.toLowerCase();
+        const search = debouncedSearch.toLowerCase();
 
         const matchesSearch =
             lead.title.toLowerCase().includes(search) ||
@@ -126,8 +139,12 @@ const Leads = () => {
                         mode="create"
                         setIsOpen={setIsFormOpen}
                         onSubmit={(newLead) => {
-                            setLeads((prev) => [newLead, ...prev]);
-                            setIsFormOpen(false);
+                            setIsLoading(true);
+                            setTimeout(() => {
+                                setLeads((prev) => [newLead, ...prev]);
+                                setIsFormOpen(false);
+                                setIsLoading(false);
+                            }, 500);
                         }} />
                 )
             }
@@ -208,21 +225,25 @@ const Leads = () => {
             )}
 
             {/* Leads Table - Next Step */}
-            <LeadTable
-                leads={paginatedLeads}
-                onView={(lead) => {
-                    setSelectedLead(lead);
-                    setIsDetailsOpen(true);
-                }}
-                onEdit={(lead) => {
-                    setSelectedLead(lead);
-                    setFormMode("edit");
-                    setIsFormOpen(true);
-                }}
-                onDelete={(lead) => {
-                    setDeleteLead(lead);
-                }}
-            />
+            {isLoading ? (
+                <TableSkeleton rows={5} columns={8} />
+            ) : (
+                <LeadTable
+                    leads={paginatedLeads}
+                    onView={(lead) => {
+                        setSelectedLead(lead);
+                        setIsDetailsOpen(true);
+                    }}
+                    onEdit={(lead) => {
+                        setSelectedLead(lead);
+                        setFormMode("edit");
+                        setIsFormOpen(true);
+                    }}
+                    onDelete={(lead) => {
+                        setDeleteLead(lead);
+                    }}
+                />
+            )}
             {/* Pagination Row */}
             <div className="mt-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
 
@@ -289,11 +310,15 @@ const Leads = () => {
                     setIsOpen={setIsFormOpen}
                     onSubmit={(updatedLead) => {
                         console.log("Updated Lead:", updatedLead);
-                        setLeads((prev) =>
-                            prev.map((l) => (l.id === selectedLead.id ? { ...l, ...updatedLead } : l))
-                        );
-                        setIsFormOpen(false);
-                        setSelectedLead(null);
+                        setIsLoading(true);
+                        setTimeout(() => {
+                            setLeads((prev) =>
+                                prev.map((l) => (l.id === selectedLead.id ? { ...l, ...updatedLead } : l))
+                            );
+                            setIsFormOpen(false);
+                            setSelectedLead(null);
+                            setIsLoading(false);
+                        }, 500);
                     }}
                 />
             )}
@@ -303,11 +328,13 @@ const Leads = () => {
                     setIsOpen={() => setDeleteLead(null)}
                     onConfirm={(lead) => {
                         console.log("Delete:", lead);
-                        setLeads(prev => prev.filter((i) => i.id !== lead.id));
-                        setCurrentPage(1);
-                        // Backend/API deletion will come here later.
-
-                        setDeleteLead(null);
+                        setIsLoading(true);
+                        setTimeout(() => {
+                            setLeads(prev => prev.filter((i) => i.id !== lead.id));
+                            setCurrentPage(1);
+                            setDeleteLead(null);
+                            setIsLoading(false);
+                        }, 300);
                     }}
                 />
             )}
