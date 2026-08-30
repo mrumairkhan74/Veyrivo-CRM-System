@@ -1,5 +1,4 @@
-/* eslint-disable react-hooks/set-state-in-effect */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { X } from "lucide-react";
 
 const emptyLead = {
@@ -59,19 +58,17 @@ const currencyOptions = [
 ];
 
 const LeadForm = ({ mode = "create", lead = null, setIsOpen, onSubmit }) => {
-    const [formData, setFormData] = useState(emptyLead);
     const isEditMode = mode === "edit";
 
-    useEffect(() => {
+    const [formData, setFormData] = useState(() => {
         if (lead) {
-            setFormData({
+            return {
                 ...emptyLead,
                 ...lead,
-            });
-        } else {
-            setFormData(emptyLead);
+            };
         }
-    }, [lead]);
+        return emptyLead;
+    });
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -331,7 +328,7 @@ const LeadForm = ({ mode = "create", lead = null, setIsOpen, onSubmit }) => {
 
                         <button
                             type="submit"
-                            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+                            className="rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-5 py-2.5 text-sm font-medium text-white hover:from-cyan-600 hover:to-purple-700"
                         >
                             {isEditMode ? "Update Lead" : "Create Lead"}
                         </button>

@@ -16,7 +16,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         {
             name: "Dashboard",
             icon: <LayoutDashboard size={20} />,
-            path: "/admin/",
+            path: "/admin/dashboard",
         },
         {
             name: "Leads",
@@ -91,7 +91,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                             <li key={item.name}>
                                 <NavLink
                                     to={item.path}
-                                     end={item.path === "/admin/"}
+                                     end={item.path === "/admin/dashboard"}
                                     onClick={() => setIsOpen(false)}
                                     className={({ isActive }) =>
                                         `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${

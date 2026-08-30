@@ -28,8 +28,8 @@ const App = () => {
         </Route>
         {/* Protected Admin Layout */}
         <Route path="/admin" element={<AdminLayouts />}>
-          <Route index element={<Navigate to="/admin/" replace />} />
-          <Route path="/" element={<AdminDashboard />} />
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="leads" element={<Leads />} />
           <Route path="companies" element={<Companies />} />
           <Route path="contacts" element={<Contacts />} />
