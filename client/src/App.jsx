@@ -16,6 +16,7 @@ import Page404 from './pages/Page404'
 import Leads from './pages/admin/Leads'
 import Companies from './pages/admin/Companies'
 import Contacts from './pages/admin/Contacts'
+import Deals from './pages/admin/Deals'
 
 const App = () => {
   return (
@@ -33,6 +34,7 @@ const App = () => {
           <Route path="leads" element={<Leads />} />
           <Route path="companies" element={<Companies />} />
           <Route path="contacts" element={<Contacts />} />
+          <Route path="deals" element={<Deals />} />
           {/* <Route path="users" element={<Users />} /> */}
         </Route>
         <Route path='/login' element={<Login />} />
