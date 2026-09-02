@@ -17,6 +17,8 @@ import Leads from './pages/admin/Leads'
 import Companies from './pages/admin/Companies'
 import Contacts from './pages/admin/Contacts'
 import Deals from './pages/admin/Deals'
+import Activities from './pages/admin/Activities'
+import Analytics from './pages/admin/Analytics'
 
 const App = () => {
   return (
@@ -35,6 +37,8 @@ const App = () => {
           <Route path="companies" element={<Companies />} />
           <Route path="contacts" element={<Contacts />} />
           <Route path="deals" element={<Deals />} />
+          <Route path="activities" element={<Activities />} />
+          <Route path="analytics" element={<Analytics />} />
           {/* <Route path="users" element={<Users />} /> */}
         </Route>
         <Route path='/login' element={<Login />} />

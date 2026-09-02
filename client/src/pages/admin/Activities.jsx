@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Filter, X, Calendar, List, Grid, ChevronLeft, ChevronRight, MoreVertical, Phone, Mail, Calendar as CalIcon, CheckSquare, FileText, Eye, Pencil, Trash2, Clock, ArrowUpDown } from 'lucide-react';
+import { Plus, Search, Filter, X, Calendar, List, ChevronLeft, ChevronRight, MoreVertical, Phone, Mail, Calendar as CalIcon, CheckSquare, FileText } from 'lucide-react';
 import ActivityForm from '../../components/AdminLayout/activities/ActivityForm';
 import { activities as initialActivities, activityTypes, activityStatuses } from '../../data/ActivitiesData';
 
@@ -93,10 +93,6 @@ const Activities = () => {
         setModalState({ isOpen: true, mode: 'create', activity: null });
     };
 
-    const openEditModal = (activity) => {
-        setModalState({ isOpen: true, mode: 'edit', activity });
-    };
-
     const handleSave = async (data) => {
         setFormLoading(true);
         try {
@@ -159,7 +155,6 @@ const Activities = () => {
     const getStatusConfig = (status) => activityStatuses.find(s => s.id === status) || activityStatuses[0];
 
     const today = new Date().toDateString();
-    const isToday = (dateString) => new Date(dateString).toDateString() === today;
     const isOverdue = (dateString, status) => status !== 'completed' && new Date(dateString) < new Date();
 
     return (
@@ -289,11 +284,15 @@ const Activities = () => {
                                             <td className="px-4 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${typeConfig.color}/10`}>
-                                                        <typeConfig.icon === 'Phone' ? <Phone className={`w-5 h-5 ${typeConfig.color}`} /> :
-                                                         typeConfig.icon === 'Mail' ? <Mail className={`w-5 h-5 ${typeConfig.color}`} /> :
-                                                         typeConfig.icon === 'Calendar' ? <CalIcon className={`w-5 h-5 ${typeConfig.color}`} /> :
-                                                         typeConfig.icon === 'CheckSquare' ? <CheckSquare className={`w-5 h-5 ${typeConfig.color}`} /> :
-                                                         <FileText className={`w-5 h-5 ${typeConfig.color}`} />}
+                                                        {(() => {
+                                                            switch (typeConfig.icon) {
+                                                                case 'Phone': return <Phone className={`w-5 h-5 ${typeConfig.color}`} />;
+                                                                case 'Mail': return <Mail className={`w-5 h-5 ${typeConfig.color}`} />;
+                                                                case 'Calendar': return <CalIcon className={`w-5 h-5 ${typeConfig.color}`} />;
+                                                                case 'CheckSquare': return <CheckSquare className={`w-5 h-5 ${typeConfig.color}`} />;
+                                                                default: return <FileText className={`w-5 h-5 ${typeConfig.color}`} />;
+                                                            }
+                                                        })()}
                                                     </div>
                                                     <div>
                                                         <p className="font-medium text-gray-900 truncate max-w-xs">{act.title}</p>
