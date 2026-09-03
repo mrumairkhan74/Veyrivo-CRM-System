@@ -6,7 +6,7 @@ import {
 import { aiProviders, aiPrompts, aiLeadGenerationHistory, aiUsageStats } from '../../data/AIData';
 
 const AIAssistant = () => {
-    const [activeTab, setActiveTab] = useState('generate');
+    const [activeTab, setActiveTab] = useState('leadGeneration');
     const [selectedProvider, setSelectedProvider] = useState('openai');
     const [selectedModel, setSelectedModel] = useState('gpt-4o');
     const [isProcessing, setIsProcessing] = useState(false);
@@ -169,9 +169,9 @@ Best,
     const formatCost = (cost) => `$${cost.toFixed(4)}`;
 
     const tabs = [
-        { id: 'generate', label: 'Generate Leads', icon: Users },
-        { id: 'qualify', label: 'Qualify Lead', icon: Target },
-        { id: 'summarize', label: 'Summarize', icon: FileText },
+        { id: 'leadGeneration', label: 'Generate Leads', icon: Users },
+        { id: 'leadQualification', label: 'Qualify Lead', icon: Target },
+        { id: 'leadSummary', label: 'Summarize', icon: FileText },
         { id: 'nextAction', label: 'Next Action', icon: Lightbulb },
         { id: 'emailDraft', label: 'Email Draft', icon: Mail },
     ];
