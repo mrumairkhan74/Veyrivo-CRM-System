@@ -2,6 +2,7 @@ const { supabase, supabaseAdmin } = require('../config/supabase');
 const { generateTokens, verifyRefreshToken, JWT_SECRET } = require('../middleware/auth');
 const { AppError } = require('../middleware/errorHandler');
 const { validateSchema, schemas } = require('../middleware/validators');
+const bcrypt = require('bcrypt');
 
 const register = async (req, res, next) => {
   try {
@@ -15,10 +16,10 @@ const register = async (req, res, next) => {
       throw new AppError('User with this email already exists', 409);
     }
 
-    // Create user in Supabase Auth
+    // Create user in Supabase Auth (Supabase handles password hashing internally)
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
-      password,
+      password,  // Pass plain password - Supabase hashes it
       email_confirm: true,
       user_metadata: { full_name: name },
     });
@@ -28,7 +29,7 @@ const register = async (req, res, next) => {
     }
 
     // Create user profile in database
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .insert({
         id: authData.user.id,
