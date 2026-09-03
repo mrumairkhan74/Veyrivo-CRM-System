@@ -20,6 +20,34 @@ const { authenticate } = require('./middleware/auth');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Keep-alive interval to prevent Supabase from pausing (every 5 minutes)
+const KEEP_ALIVE_INTERVAL = 5 * 60 * 1000; // 5 minutes
+let keepAliveInterval;
+
+const startKeepAlive = () => {
+  keepAliveInterval = setInterval(async () => {
+    try {
+      const { error } = await supabase.from('profiles').select('id').limit(1);
+      if (error) {
+        console.error('[Keep-Alive] DB ping failed:', error.message);
+      } else {
+        console.log('[Keep-Alive] DB ping successful:', new Date().toISOString());
+      }
+    } catch (err) {
+      console.error('[Keep-Alive] Error:', err.message);
+    }
+  }, KEEP_ALIVE_INTERVAL);
+  
+  console.log(`[Keep-Alive] Started - pinging DB every ${KEEP_ALIVE_INTERVAL / 60000} minutes`);
+};
+
+const stopKeepAlive = () => {
+  if (keepAliveInterval) {
+    clearInterval(keepAliveInterval);
+    console.log('[Keep-Alive] Stopped');
+  }
+};
+
 // Security middleware
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -70,10 +98,32 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+  
+  // Start keep-alive after server starts
+  startKeepAlive();
 });
 
-module.exports = app;
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  stopKeepAlive();
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully');
+  stopKeepAlive();
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+module.exports = { app, startKeepAlive, stopKeepAlive };
