@@ -19,6 +19,7 @@ import Contacts from './pages/admin/Contacts'
 import Deals from './pages/admin/Deals'
 import Activities from './pages/admin/Activities'
 import Analytics from './pages/admin/Analytics'
+import AIAssistant from './pages/admin/AIAssistant'
 
 const App = () => {
   return (
@@ -39,6 +40,7 @@ const App = () => {
           <Route path="deals" element={<Deals />} />
           <Route path="activities" element={<Activities />} />
           <Route path="analytics" element={<Analytics />} />
+          <Route path="ai" element={<AIAssistant />} />
           {/* <Route path="users" element={<Users />} /> */}
         </Route>
         <Route path='/login' element={<Login />} />

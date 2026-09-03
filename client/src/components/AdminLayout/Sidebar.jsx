@@ -8,6 +8,7 @@ import {
     BarChart3,
     Settings,
     X,
+    Bot,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
@@ -47,6 +48,11 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             name: "Analytics",
             icon: <BarChart3 size={20} />,
             path: "/admin/analytics",
+        },
+        {
+            name: "AI Assistant",
+            icon: <Bot size={20} />,
+            path: "/admin/ai",
         },
     ];
 
