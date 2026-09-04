@@ -27,7 +27,10 @@ let keepAliveInterval;
 const startKeepAlive = () => {
   keepAliveInterval = setInterval(async () => {
     try {
-      const { error } = await supabase.from('profiles').select('id').limit(1);
+      // Use admin client to bypass RLS
+      const { supabaseAdmin } = require('./config/supabase');
+      const client = supabaseAdmin || supabase;
+      const { error } = await client.from('profiles').select('id').limit(1);
       if (error) {
         console.error('[Keep-Alive] DB ping failed:', error.message);
       } else {

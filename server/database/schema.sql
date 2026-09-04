@@ -4,6 +4,35 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Helper function to check if current user is admin (SECURITY DEFINER avoids RLS recursion)
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE id = auth.uid() AND role = 'admin'
+    );
+END;
+$$;
+
+-- Helper to get current user's role
+CREATE OR REPLACE FUNCTION current_user_role()
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    RETURN COALESCE((
+        SELECT role FROM public.profiles WHERE id = auth.uid()
+    ), 'user');
+END;
+$$;
+
 -- Profiles table (extends Supabase auth.users)
 CREATE TABLE IF NOT EXISTS profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -26,9 +55,7 @@ CREATE POLICY "Users can update own profile" ON profiles
     FOR UPDATE USING (auth.uid() = id);
 
 CREATE POLICY "Admins can view all profiles" ON profiles
-    FOR SELECT USING (
-        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-    );
+    FOR SELECT USING (public.is_admin());
 
 -- Reference tables
 CREATE TABLE IF NOT EXISTS industries (
@@ -86,9 +113,7 @@ CREATE POLICY "Users can update own companies" ON companies
     FOR UPDATE USING (auth.uid() = owner_id);
 
 CREATE POLICY "Admins can manage all companies" ON companies
-    FOR ALL USING (
-        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-    );
+    FOR ALL USING (public.is_admin());
 
 -- Contacts table
 CREATE TABLE IF NOT EXISTS contacts (
@@ -123,9 +148,7 @@ CREATE POLICY "Users can update own contacts" ON contacts
     FOR UPDATE USING (auth.uid() = owner_id);
 
 CREATE POLICY "Admins can manage all contacts" ON contacts
-    FOR ALL USING (
-        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-    );
+    FOR ALL USING (public.is_admin());
 
 -- Leads table
 CREATE TABLE IF NOT EXISTS leads (
@@ -168,9 +191,7 @@ CREATE POLICY "Users can update own leads" ON leads
     FOR UPDATE USING (auth.uid() = owner_id);
 
 CREATE POLICY "Admins can manage all leads" ON leads
-    FOR ALL USING (
-        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-    );
+    FOR ALL USING (public.is_admin());
 
 -- Deals table
 CREATE TABLE IF NOT EXISTS deals (
@@ -205,9 +226,7 @@ CREATE POLICY "Users can update own deals" ON deals
     FOR UPDATE USING (auth.uid() = owner_id);
 
 CREATE POLICY "Admins can manage all deals" ON deals
-    FOR ALL USING (
-        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-    );
+    FOR ALL USING (public.is_admin());
 
 -- Activities table
 CREATE TABLE IF NOT EXISTS activities (
@@ -247,9 +266,7 @@ CREATE POLICY "Users can update own activities" ON activities
     FOR UPDATE USING (auth.uid() = owner_id);
 
 CREATE POLICY "Admins can manage all activities" ON activities
-    FOR ALL USING (
-        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-    );
+    FOR ALL USING (public.is_admin());
 
 -- AI Results table
 CREATE TABLE IF NOT EXISTS ai_results (
@@ -280,9 +297,7 @@ CREATE POLICY "Users can create AI results" ON ai_results
     FOR INSERT WITH CHECK (created_by = auth.uid());
 
 CREATE POLICY "Admins can view all AI results" ON ai_results
-    FOR SELECT USING (
-        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-    );
+    FOR SELECT USING (public.is_admin());
 
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_companies_owner ON companies(owner_id);
