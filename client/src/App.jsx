@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect } from 'react';
+import { useAuthStore } from './store';
 
 // Public pages with public layout. 
 // In this none login user can view as he want
@@ -23,6 +25,12 @@ import AIAssistant from './pages/admin/AIAssistant'
 import Settings from './pages/admin/Settings'
 
 const App = () => {
+  const initialize = useAuthStore((state) => state.initialize);
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
   return (
     <BrowserRouter>
       <Routes>

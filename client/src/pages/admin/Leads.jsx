@@ -1,341 +1,287 @@
-/* eslint-disable react-hooks/set-state-in-effect */
-import { Plus, Search, Filter } from "lucide-react";
+import { Plus, Search, Filter, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import LeadTable from "../../components/AdminLayout/leads/LeadTable";
-import { leads as initialLeads } from "../../data/LeadData";
 import LeadDetails from "../../components/AdminLayout/leads/LeadDetails";
 import LeadForm from "../../components/AdminLayout/leads/LeadForm";
 import DeleteLead from "../../components/AdminLayout/leads/DeleteLead";
 import { TableSkeleton } from "../../components/AdminLayout/Skeleton";
+import { useLeads } from "../../store/hooks";
 
 const Leads = () => {
-    const [leads, setLeads] = useState(initialLeads)
+    const {
+        leads,
+        selectedLead: storeSelectedLead,
+        loading,
+        error,
+        pagination,
+        filters,
+        sort,
+        fetchLeads,
+        fetchLead,
+        createLead,
+        updateLead,
+        deleteLead: deleteLeadAction,
+        setFilters,
+        setSort,
+        setPage,
+        clearError,
+    } = useLeads();
+
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [formMode, setFormMode] = useState("create");
     const [searchTerm, setSearchTerm] = useState("");
-    const [currentPage, setCurrentPage] = useState(1);
-    const [selectedLead, setSelectedLead] = useState(null);
+    const [selectedLeadId, setSelectedLeadId] = useState(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [deleteLead, setDeleteLead] = useState(null);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
-
-
-    const [filters, setFilters] = useState({
-        status: "",
-        temperature: "",
-        source: "",
-    });
-
-
-    // Debounced search
-    const [debouncedSearch, setDebouncedSearch] = useState("");
+    useEffect(() => {
+        fetchLeads();
+    }, []);
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearch(searchTerm);
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [searchTerm]);
+        fetchLeads({ page: pagination.page, ...filters, sort: `${sort.field}:${sort.direction}` });
+    }, [pagination.page, filters, sort]);
 
-    // Search & Filter 
-    const filteredLeads = leads.filter((lead) => {
-        const search = debouncedSearch.toLowerCase();
+    const handleSearch = (e) => {
+        setSearchTerm(e.target.value);
+    };
 
-        const matchesSearch =
-            lead.title.toLowerCase().includes(search) ||
-            lead.company.toLowerCase().includes(search) ||
-            lead.service.toLowerCase().includes(search) ||
-            lead.email.toLowerCase().includes(search);
+    const handleFilterChange = (key, value) => {
+        setFilters({ ...filters, [key]: value });
+        setPage(1);
+    };
 
-        const matchesFilters =
-            (!filters.status || lead.status === filters.status) &&
-            (!filters.temperature || lead.temperature === filters.temperature) &&
-            (!filters.source || lead.source === filters.source);
+    const clearFilters = () => {
+        setFilters({ status: "", temperature: "", source: "" });
+        setSearchTerm("");
+        setPage(1);
+    };
 
-        return matchesSearch && matchesFilters;
-    });
+    const hasActiveFilters = () => {
+        return filters.status || filters.temperature || filters.source || searchTerm;
+    };
 
-    // Pages 
+    const openCreateModal = () => {
+        setFormMode("create");
+        setIsFormOpen(true);
+    };
 
-    const leadsPerPage = 5;
+    const openEditModal = (lead) => {
+        setSelectedLeadId(lead.id);
+        setFormMode("edit");
+        setIsFormOpen(true);
+    };
 
-    const totalPages = Math.ceil(filteredLeads.length / leadsPerPage);
+    const handleSave = async (data) => {
+        setIsLoading(true);
+        try {
+            if (formMode === "create") {
+                await createLead(data);
+            } else {
+                await updateLead(selectedLeadId, data);
+            }
+            setIsFormOpen(false);
+            setSelectedLeadId(null);
+        } catch (error) {
+            console.error("Save error:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-    const startIndex = (currentPage - 1) * leadsPerPage;
+    const handleDelete = async (lead) => {
+        setDeleteLead(lead);
+    };
 
-    const paginatedLeads = filteredLeads.slice(
-        startIndex,
-        startIndex + leadsPerPage
-    );
+    const confirmDelete = async () => {
+        if (!deleteLead) return;
+        setIsLoading(true);
+        try {
+            await deleteLeadAction(deleteLead.id);
+            setDeleteLead(null);
+        } catch (error) {
+            console.error("Delete error:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-    useEffect(() => {
+    const handleView = (lead) => {
+        setSelectedLeadId(lead.id);
+        setIsDetailsOpen(true);
+    };
 
-        setCurrentPage(1);
-    }, [searchTerm, filters]);
+    const closeDetails = () => {
+        setIsDetailsOpen(false);
+        setSelectedLeadId(null);
+    };
+
+    const selectedLead = leads.find(l => l.id === selectedLeadId);
 
     return (
         <section className="w-full">
-
-            {/* Page Header */}
-            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-800 md:text-3xl">
-                        Leads
-                    </h1>
-
-                    <p className="mt-1 text-sm text-slate-500">
-                        Manage, track, and organize all your potential clients.
-                    </p>
+                    <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
+                    <p className="text-sm text-gray-500 mt-1">Manage and track your leads</p>
                 </div>
-
                 <button
-                    onClick={() => {
-                        setFormMode("create");
-                        setIsFormOpen(true);
-                    }}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-2.5 text-sm font-medium text-white transition hover:from-cyan-600 hover:to-purple-700">
-                    <Plus size={18} />
+                    onClick={openCreateModal}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white rounded-lg hover:opacity-90 transition-opacity shadow-sm"
+                >
+                    <Plus className="w-4 h-4" />
                     Add Lead
                 </button>
-
             </div>
 
             {/* Search and Filters */}
-            <div className="mb-6 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row">
-
-                {/* Search */}
-                <div className="relative flex-1">
-                    <Search
-                        size={18}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    />
-
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
                         type="text"
+                        placeholder="Search leads by title, company, service, email..."
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Search by name, company, email..."
-                        className="w-full rounded-lg border border-slate-200 py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        onChange={handleSearch}
+                        className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition-shadow text-sm"
                     />
+                    {searchTerm && (
+                        <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                            <X className="w-4 h-4" />
+                        </button>
+                    )}
                 </div>
 
-                {/* Filter Button */}
                 <button
-                    onClick={() => setIsFilterOpen((prev) => !prev)}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                    className={`inline-flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${isFilterOpen || hasActiveFilters()
+                        ? "border-cyan-500 text-cyan-600 bg-cyan-50"
+                        : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                    }`}
                 >
-                    <Filter size={18} />
+                    <Filter className="w-4 h-4" />
                     Filters
+                    {hasActiveFilters() && (
+                        <span className="w-5 h-5 bg-cyan-600 text-white rounded-full text-xs flex items-center justify-center">
+                            {(filters.status ? 1 : 0) + (filters.temperature ? 1 : 0) + (filters.source ? 1 : 0) + (searchTerm ? 1 : 0)}
+                        </span>
+                    )}
                 </button>
 
+                {hasActiveFilters() && (
+                    <button onClick={clearFilters} className="inline-flex items-center gap-1 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+                        <X className="w-4 h-4" />
+                        Clear all
+                    </button>
+                )}
             </div>
 
-
-            {isFormOpen && formMode === "create" && (
-                    <LeadForm
-                        mode="create"
-                        setIsOpen={setIsFormOpen}
-                        onSubmit={(newLead) => {
-                            setIsLoading(true);
-                            setTimeout(() => {
-                                setLeads((prev) => [newLead, ...prev]);
-                                setIsFormOpen(false);
-                                setIsLoading(false);
-                            }, 500);
-                        }} />
-                )
-            }
-            {/* Filter Logic */}
+            {/* Filter Panel */}
             {isFilterOpen && (
-                <div className="mb-6 grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-3 lg:grid-cols-4">
-
-                    {/* Status */}
-                    <select
-                        value={filters.status}
-                        onChange={(e) =>
-                            setFilters({
-                                ...filters,
-                                status: e.target.value,
-                            })
-                        }
-                        className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500"
-                    >
-                        <option value="">All Statuses</option>
-                        <option value="new">New</option>
-                        <option value="contacted">Contacted</option>
-                        <option value="qualified">Qualified</option>
-                        <option value="nurture">Nurture</option>
-                        <option value="lost">Lost</option>
-                    </select>
-
-                    {/* Temperature */}
-                    <select
-                        value={filters.temperature}
-                        onChange={(e) =>
-                            setFilters({
-                                ...filters,
-                                temperature: e.target.value,
-                            })
-                        }
-                        className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500"
-                    >
-                        <option value="">All Temperatures</option>
-                        <option value="hot">Hot</option>
-                        <option value="warm">Warm</option>
-                        <option value="cold">Cold</option>
-                        <option value="unknown">Unknown</option>
-                    </select>
-
-                    {/* Source */}
-                    <select
-                        value={filters.source}
-                        onChange={(e) =>
-                            setFilters({
-                                ...filters,
-                                source: e.target.value,
-                            })
-                        }
-                        className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500"
-                    >
-                        <option value="">All Sources</option>
-                        <option value="LinkedIn">LinkedIn</option>
-                        <option value="Referral">Referral</option>
-                        <option value="Website">Website</option>
-                        <option value="Cold Email">Cold Email</option>
-                        <option value="Google">Google</option>
-                        <option value="Facebook">Facebook</option>
-                    </select>
-
-                    <button
-                        onClick={() =>
-                            setFilters({
-                                status: "",
-                                temperature: "",
-                                source: "",
-                            })
-                        }
-                        className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-                    >
-                        Clear Filters
-                    </button>
+                <div className="bg-white border border-gray-200 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
+                        <select
+                            value={filters.status || ""}
+                            onChange={(e) => handleFilterChange("status", e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
+                        >
+                            <option value="">All Statuses</option>
+                            <option value="new">New</option>
+                            <option value="contacted">Contacted</option>
+                            <option value="qualified">Qualified</option>
+                            <option value="nurture">Nurture</option>
+                            <option value="lost">Lost</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Temperature</label>
+                        <select
+                            value={filters.temperature || ""}
+                            onChange={(e) => handleFilterChange("temperature", e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
+                        >
+                            <option value="">All Temperatures</option>
+                            <option value="hot">Hot</option>
+                            <option value="warm">Warm</option>
+                            <option value="cold">Cold</option>
+                            <option value="unknown">Unknown</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Source</label>
+                        <select
+                            value={filters.source || ""}
+                            onChange={(e) => handleFilterChange("source", e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
+                        >
+                            <option value="">All Sources</option>
+                            <option value="linkedin">LinkedIn</option>
+                            <option value="referral">Referral</option>
+                            <option value="website">Website</option>
+                            <option value="cold_email">Cold Email</option>
+                            <option value="google">Google</option>
+                            <option value="facebook">Facebook</option>
+                        </select>
+                    </div>
                 </div>
             )}
 
-            {/* Leads Table - Next Step */}
+            {/* Leads Table */}
             {isLoading ? (
                 <TableSkeleton rows={5} columns={8} />
             ) : (
                 <LeadTable
-                    leads={paginatedLeads}
-                    onView={(lead) => {
-                        setSelectedLead(lead);
-                        setIsDetailsOpen(true);
+                    leads={leads}
+                    loading={loading}
+                    onView={handleView}
+                    onEdit={openEditModal}
+                    onDelete={handleDelete}
+                    pagination={{
+                        currentPage: pagination.page,
+                        totalPages: pagination.totalPages,
+                        total: pagination.total,
+                        limit: pagination.limit,
+                        filters: Object.fromEntries(
+                            Object.entries(filters).filter(([, v]) => v)
+                        )
                     }}
-                    onEdit={(lead) => {
-                        setSelectedLead(lead);
-                        setFormMode("edit");
-                        setIsFormOpen(true);
-                    }}
-                    onDelete={(lead) => {
-                        setDeleteLead(lead);
-                    }}
+                    onPageChange={setPage}
+                    onSort={setSort}
+                    sortField={sort.field}
+                    sortDirection={sort.direction}
                 />
             )}
-            {/* Pagination Row */}
-            <div className="mt-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
 
-                <p className="text-sm text-slate-500">
-                    Showing{" "}
-                    <span className="font-semibold text-slate-700">
-                        {filteredLeads.length === 0 ? 0 : startIndex + 1}
-                    </span>
-                    {" "}to{" "}
-                    <span className="font-semibold text-slate-700">
-                        {Math.min(startIndex + leadsPerPage, filteredLeads.length)}
-                    </span>
-                    {" "}of{" "}
-                    <span className="font-semibold text-slate-700">
-                        {filteredLeads.length}
-                    </span>
-                    {" "}leads
-                </p>
+            {/* Lead Form Modal */}
+            {isFormOpen && (
+                <LeadForm
+                    mode={formMode}
+                    lead={selectedLeadId ? leads.find(l => l.id === selectedLeadId) : null}
+                    onSave={handleSave}
+                    onCancel={() => { setIsFormOpen(false); setSelectedLeadId(null); }}
+                    loading={isLoading}
+                />
+            )}
 
-                <div className="flex items-center gap-2">
-
-                    <button
-                        disabled={currentPage === 1}
-                        onClick={() => setCurrentPage((prev) => prev - 1)}
-                        className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                        Previous
-                    </button>
-
-                    <span className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-600">
-                        {currentPage} / {totalPages || 1}
-                    </span>
-
-                    <button
-                        disabled={currentPage === totalPages || totalPages === 0}
-                        onClick={() => setCurrentPage((prev) => prev + 1)}
-                        className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                        Next
-                    </button>
-
-                </div>
-            </div>
-
-            {/* View Lead Detail Box */}
+            {/* Lead Details Modal */}
             {isDetailsOpen && selectedLead && (
                 <LeadDetails
                     lead={selectedLead}
-                    setIsOpen={() => setIsDetailsOpen(false)}
-                    onEdit={(lead) => {
-                        setIsDetailsOpen(false);
-                        setSelectedLead(lead);
-                        setFormMode("edit");
-                        setIsFormOpen(true);
-                    }}
+                    setIsOpen={closeDetails}
+                    onEdit={() => { closeDetails(); openEditModal(selectedLead); }}
                 />
             )}
 
-            {/* Updated Lead Detail */}
-            {isFormOpen && formMode === "edit" && selectedLead && (
-                <LeadForm
-                    mode="edit"
-                    lead={selectedLead}
-                    setIsOpen={setIsFormOpen}
-                    onSubmit={(updatedLead) => {
-                        console.log("Updated Lead:", updatedLead);
-                        setIsLoading(true);
-                        setTimeout(() => {
-                            setLeads((prev) =>
-                                prev.map((l) => (l.id === selectedLead.id ? { ...l, ...updatedLead } : l))
-                            );
-                            setIsFormOpen(false);
-                            setSelectedLead(null);
-                            setIsLoading(false);
-                        }, 500);
-                    }}
-                />
-            )}
+            {/* Delete Confirmation Modal */}
             {deleteLead && (
                 <DeleteLead
                     lead={deleteLead}
-                    setIsOpen={() => setDeleteLead(null)}
-                    onConfirm={(lead) => {
-                        console.log("Delete:", lead);
-                        setIsLoading(true);
-                        setTimeout(() => {
-                            setLeads(prev => prev.filter((i) => i.id !== lead.id));
-                            setCurrentPage(1);
-                            setDeleteLead(null);
-                            setIsLoading(false);
-                        }, 300);
-                    }}
+                    onConfirm={confirmDelete}
+                    onCancel={() => setDeleteLead(null)}
                 />
             )}
         </section>
