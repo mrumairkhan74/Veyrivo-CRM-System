@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     User, Users, Shield, Plug, Bell, Lock, CreditCard,
     Save, Edit, Trash2, Plus, Mail, Phone, Key,
     Eye, EyeOff, ChevronDown, MoreVertical, CheckCircle,
-    AlertCircle, X
+    AlertCircle, X, Download, Upload, Camera, Globe
 } from 'lucide-react';
 import { supabase } from '../../services/api';
 
@@ -125,9 +125,9 @@ const Settings = () => {
     const renderContent = () => {
         switch (activeTab) {
             case 'profile':
-                return <ProfileTab />;
+                return <ProfileTab user={users.find(u => u.id === currentUserId) || users[0]} />;
             case 'team':
-                return <TeamTab users={users} loading={loading} onUpdateRole={updateUserRole} onRemove={removeUser} onRefresh={fetchUsers} />;
+                return <TeamTab users={users} loading={loading} onUpdateRole={updateUserRole} onRemove={removeUser} onRefresh={fetchUsers} setShowInviteModal={setShowInviteModal} />;
             case 'roles':
                 return <RolesTab roles={roles} permissions={permissions} />;
             case 'integrations':
@@ -139,9 +139,17 @@ const Settings = () => {
             case 'billing':
                 return <BillingTab />;
             default:
-                return <ProfileTab />;
+                return <ProfileTab user={users.find(u => u.id === currentUserId) || users[0]} />;
         }
     };
+
+    // Get current user ID from auth
+    const [currentUserId, setCurrentUserId] = useState(null);
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            if (user) setCurrentUserId(user.id);
+        });
+    }, []);
 
     return (
         <div className="space-y-6">
@@ -228,43 +236,139 @@ const Settings = () => {
 };
 
 // Sub-components
-const ProfileTab = () => (
-    <form className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-gray-700">Full Name</label>
-                <input type="text" defaultValue="Ahmed Khan" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none" />
-            </div>
-            <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-gray-700">Email</label>
-                <input type="email" defaultValue="ahmed@company.com" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none" />
-            </div>
-            <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-gray-700">Phone</label>
-                <input type="tel" defaultValue="+92 300 1234567" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none" />
-            </div>
-            <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-gray-700">Role</label>
-                <input type="text" defaultValue="Admin" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50" readOnly />
-            </div>
-        </div>
-        <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-700">Avatar</label>
-            <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold">AK</div>
-                <button type="button" className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Change Avatar</button>
-            </div>
-        </div>
-        <div className="pt-4 border-t border-gray-200">
-            <button type="submit" className="inline-flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white rounded-lg hover:opacity-90 text-sm font-medium">
-                <Save className="w-4 h-4" />
-                Save Changes
-            </button>
-        </div>
-    </form>
-);
+const ProfileTab = ({ user }) => {
+    const [formData, setFormData] = useState({
+        full_name: user?.full_name || '',
+        email: user?.email || '',
+        phone: user?.phone || '',
+    });
+    const [avatar, setAvatar] = useState(null);
+    const [avatarPreview, setAvatarPreview] = useState(user?.avatar_url || null);
+    const [saving, setSaving] = useState(false);
 
-const TeamTab = ({ users, loading, onUpdateRole, onRemove, onRefresh }) => (
+    const handleChange = (e) => {
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
+
+    const handleAvatarChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setAvatar(file);
+            const reader = new FileReader();
+            reader.onloadend = () => setAvatarPreview(reader.result);
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            // Upload avatar if changed
+            let avatarUrl = user?.avatar_url;
+            if (avatar) {
+                const fileName = `${user.id}-${Date.now()}-${avatar.name}`;
+                const { data, error } = await supabase.storage
+                    .from('avatars')
+                    .upload(fileName, avatar, { upsert: true });
+                if (error) throw error;
+                const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
+                avatarUrl = urlData.publicUrl;
+            }
+
+            const { error } = await supabase
+                .from('profiles')
+                .update({ ...formData, avatar_url: avatarUrl, updated_at: new Date().toISOString() })
+                .eq('id', user.id);
+
+            if (error) throw error;
+            alert('Profile saved successfully!');
+        } catch (error) {
+            console.error('Save error:', error);
+            alert('Failed to save profile');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleAvatarUpload = () => {
+        document.getElementById('avatar-upload').click();
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-6">
+            <input type="file" id="avatar-upload" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                    <input
+                        type="text"
+                        name="full_name"
+                        value={formData.full_name}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
+                    />
+                </div>
+                <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-gray-700">Email</label>
+                    <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
+                    />
+                </div>
+                <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-gray-700">Phone</label>
+                    <input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
+                    />
+                </div>
+                <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-gray-700">Role</label>
+                    <input
+                        type="text"
+                        value={user?.role || 'member'}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50"
+                        readOnly
+                    />
+                </div>
+            </div>
+            <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-gray-700">Avatar</label>
+                <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold relative overflow-hidden">
+                        {avatarPreview ? (
+                            <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                            <span className="text-white text-xl font-bold">{user?.full_name?.charAt(0) || 'U'}</span>
+                        )}
+                        <label htmlFor="avatar-upload" className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+                            <Upload className="w-6 h-6 text-white" />
+                        </label>
+                    </div>
+                    <button type="button" onClick={handleAvatarUpload} className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
+                        Change Avatar
+                    </button>
+                </div>
+            </div>
+            <div className="pt-4 border-t border-gray-200">
+                <button type="submit" disabled={saving} className="inline-flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white rounded-lg hover:opacity-90 text-sm font-medium disabled:opacity-50">
+                    <Save className="w-4 h-4" />
+                    {saving ? 'Saving...' : 'Save Changes'}
+                </button>
+            </div>
+        </form>
+    );
+};
+
+const TeamTab = ({ users, loading, onUpdateRole, onRemove, onRefresh, setShowInviteModal }) => {
+    return (
     <div className="space-y-6">
         <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900">Team Members ({users.length})</h3>
@@ -351,6 +455,7 @@ const TeamTab = ({ users, loading, onUpdateRole, onRemove, onRefresh }) => (
         )}
     </div>
 );
+};
 
 const RolesTab = ({ roles, permissions }) => (
     <div className="space-y-6">
@@ -386,108 +491,168 @@ const RolesTab = ({ roles, permissions }) => (
     </div>
 );
 
-const IntegrationsTab = () => (
-    <div className="space-y-6">
-        <h3 className="text-lg font-semibold text-gray-900">Third-Party Integrations</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-                { name: 'Gmail', description: 'Sync emails and contacts', connected: false },
-                { name: 'Outlook', description: 'Calendar and email sync', connected: false },
-                { name: 'Slack', description: 'Team notifications', connected: false },
-                { name: 'Zoom', description: 'Video meeting integration', connected: false },
-                { name: 'HubSpot', description: 'Marketing automation', connected: false },
-                { name: 'Zapier', description: 'Workflow automation', connected: false },
-            ].map(item => (
-                <div key={item.name} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
-                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                                            <Plug className="w-5 h-5 text-gray-500" />
-                                        </div>
-                                        <div>
-                                            <p className="font-medium text-gray-900">{item.name}</p>
-                                            <p className="text-sm text-gray-500">{item.description}</p>
-                                        </div>
-                                    </div>
-                                    <button className={`px-4 py-2 rounded-lg text-sm font-medium ${item.connected ? 'bg-gray-100 text-gray-600' : 'bg-cyan-50 text-cyan-700 hover:bg-cyan-100'}`}>
-                                        {item.connected ? 'Connected' : 'Connect'}
-                                    </button>
-                                </div>
-            ))}
-        </div>
-    </div>
-);
+const NotificationsTab = () => {
+    const [notifications, setNotifications] = useState([
+        { id: 'new-lead', label: 'New Lead Assigned', description: 'When a lead is assigned to you', enabled: true },
+        { id: 'lead-status', label: 'Lead Status Changes', description: 'When lead status is updated', enabled: true },
+        { id: 'deal-stage', label: 'Deal Stage Updates', description: 'When deal moves to next stage', enabled: true },
+        { id: 'activity-reminders', label: 'Activity Reminders', description: 'Upcoming meetings and calls', enabled: true },
+        { id: 'overdue-tasks', label: 'Overdue Tasks', description: 'Daily summary of overdue items', enabled: true },
+        { id: 'weekly-reports', label: 'Weekly Reports', description: 'Weekly performance summary', enabled: false },
+        { id: 'team-mentions', label: 'Team Mentions', description: 'When mentioned in comments', enabled: true },
+        { id: 'system-updates', label: 'System Updates', description: 'Maintenance and feature announcements', enabled: false },
+    ]);
 
-const NotificationsTab = () => (
-    <div className="space-y-6">
-        <h3 className="text-lg font-semibold text-gray-900">Notification Preferences</h3>
-        <div className="space-y-4">
-            {[
-                { label: 'New Lead Assigned', description: 'When a lead is assigned to you', enabled: true },
-                { label: 'Lead Status Changes', description: 'When lead status is updated', enabled: true },
-                { label: 'Deal Stage Updates', description: 'When deal moves to next stage', enabled: true },
-                { label: 'Activity Reminders', description: 'Upcoming meetings and calls', enabled: true },
-                { label: 'Overdue Tasks', description: 'Daily summary of overdue items', enabled: true },
-                { label: 'Weekly Reports', description: 'Weekly performance summary', enabled: false },
-                { label: 'Team Mentions', description: 'When mentioned in comments', enabled: true },
-                { label: 'System Updates', description: 'Maintenance and feature announcements', enabled: false },
-            ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
-                    <div>
-                        <p className="font-medium text-gray-900">{item.label}</p>
-                        <p className="text-sm text-gray-500">{item.description}</p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" defaultChecked={item.enabled} className="sr-only peer" />
-                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cyan-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
-                                    </label>
-                                </div>
-            ))}
-        </div>
-    </div>
-);
+    const toggleNotification = (id) => {
+        setNotifications(prev => prev.map(n => 
+            n.id === id ? { ...n, enabled: !n.enabled } : n
+        ));
+    };
 
-const SecurityTab = () => (
-    <div className="space-y-6">
-        <h3 className="text-lg font-semibold text-gray-900">Security Settings</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2"><Lock className="w-5 h-5" /> Change Password</h4>
-                <form className="space-y-4">
-                    <div className="space-y-1.5">
-                        <label className="block text-sm font-medium text-gray-700">Current Password</label>
-                        <input type="password" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none" />
+    return (
+        <div className="space-y-6">
+            <h3 className="text-lg font-semibold text-gray-900">Notification Preferences</h3>
+            <div className="space-y-4">
+                {notifications.map(item => (
+                    <div key={item.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
+                        <div>
+                            <p className="font-medium text-gray-900">{item.label}</p>
+                            <p className="text-sm text-gray-500">{item.description}</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={item.enabled}
+                                onChange={() => toggleNotification(item.id)}
+                                className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cyan-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+                        </label>
                     </div>
-                    <div className="space-y-1.5">
-                        <label className="block text-sm font-medium text-gray-700">New Password</label>
-                        <input type="password" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none" />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
-                        <input type="password" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none" />
-                    </div>
-                    <button type="submit" className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white rounded-lg hover:opacity-90 text-sm font-medium">Update Password</button>
-                </form>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2"><Shield className="w-5 h-5" /> Two-Factor Authentication</h4>
-                <p className="text-sm text-gray-500 mb-4">Add an extra layer of security to your account.</p>
-                <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100">Enable 2FA</button>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2"><Key className="w-5 h-5" /> API Keys</h4>
-                <p className="text-sm text-gray-500 mb-4">Manage API keys for integrations.</p>
-                <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100">Generate New Key</button>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2"><AlertCircle className="w-5 h-5" /> Active Sessions</h4>
-                <p className="text-sm text-gray-500 mb-4">View and manage your active login sessions.</p>
-                <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100">View Sessions</button>
+                ))}
             </div>
         </div>
-    </div>
-);
+    );
+};
 
-const BillingTab = () => (
+const SecurityTab = () => {
+    const [passwordForm, setPasswordForm] = useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+    });
+    const [changingPassword, setChangingPassword] = useState(false);
+
+    const handlePasswordChange = (e) => {
+        setPasswordForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
+
+    const handlePasswordSubmit = async (e) => {
+        e.preventDefault();
+        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+            alert('Passwords do not match');
+            return;
+        }
+        if (passwordForm.newPassword.length < 8) {
+            alert('Password must be at least 8 characters');
+            return;
+        }
+        setChangingPassword(true);
+        try {
+            const { error } = await supabase.auth.updateUser({
+                password: passwordForm.newPassword,
+            });
+            if (error) throw error;
+            alert('Password updated successfully!');
+            setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        } catch (error) {
+            console.error('Password change error:', error);
+            alert('Failed to update password: ' + error.message);
+        } finally {
+            setChangingPassword(false);
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            <h3 className="text-lg font-semibold text-gray-900">Security Settings</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                    <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2"><Lock className="w-5 h-5" /> Change Password</h4>
+                    <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                        <div className="space-y-1.5">
+                            <label className="block text-sm font-medium text-gray-700">Current Password</label>
+                            <input
+                                type="password"
+                                name="currentPassword"
+                                value={passwordForm.currentPassword}
+                                onChange={e => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
+                                required
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-sm font-medium text-gray-700">New Password</label>
+                            <input
+                                type="password"
+                                name="newPassword"
+                                value={passwordForm.newPassword}
+                                onChange={e => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
+                                required
+                                minLength={8}
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
+                            <input
+                                type="password"
+                                name="confirmPassword"
+                                value={passwordForm.confirmPassword}
+                                onChange={e => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
+                                required
+                            />
+                        </div>
+                        <button type="submit" disabled={changingPassword} className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white rounded-lg hover:opacity-90 text-sm font-medium disabled:opacity-50">
+                            {changingPassword ? 'Updating...' : 'Update Password'}
+                        </button>
+                    </form>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                    <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2"><Shield className="w-5 h-5" /> Two-Factor Authentication</h4>
+                    <p className="text-sm text-gray-500 mb-4">Add an extra layer of security to your account.</p>
+                    <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100">Enable 2FA</button>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                    <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2"><Key className="w-5 h-5" /> API Keys</h4>
+                    <p className="text-sm text-gray-500 mb-4">Manage API keys for integrations.</p>
+                    <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100">Generate New Key</button>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                    <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2"><AlertCircle className="w-5 h-5" /> Active Sessions</h4>
+                    <p className="text-sm text-gray-500 mb-4">View and manage your active login sessions.</p>
+                    <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100">View Sessions</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const BillingTab = () => {
+    const handleUpgrade = (plan) => {
+        alert(`Upgrade to ${plan} plan - redirecting to billing portal...`);
+    };
+
+    const handleManageSubscription = () => {
+        alert('Opening billing portal...');
+    };
+
+    const handleDownloadInvoice = (date) => {
+        alert(`Downloading invoice for ${date}...`);
+    };
+
+    return (
     <div className="space-y-6">
         <h3 className="text-lg font-semibold text-gray-900">Billing & Subscription</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -502,7 +667,7 @@ const BillingTab = () => (
                     <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-emerald-500" /> Advanced analytics</li>
                     <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-emerald-500" /> Priority support</li>
                 </ul>
-                <button className="mt-6 w-full px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white rounded-lg hover:opacity-90 text-sm font-medium">Manage Subscription</button>
+                <button onClick={handleManageSubscription} className="mt-6 w-full px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white rounded-lg hover:opacity-90 text-sm font-medium">Manage Subscription</button>
             </div>
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
                 <h4 className="font-semibold text-gray-900">Starter</h4>
@@ -514,7 +679,7 @@ const BillingTab = () => (
                     <li className="flex items-center gap-2"><X className="w-4 h-4 text-gray-300" /> AI Assistant</li>
                     <li className="flex items-center gap-2"><X className="w-4 h-4 text-gray-300" /> Priority support</li>
                 </ul>
-                <button className="mt-6 w-full px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100">Upgrade</button>
+                <button onClick={() => handleUpgrade('Starter')} className="mt-6 w-full px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100">Upgrade</button>
             </div>
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
                 <h4 className="font-semibold text-gray-900">Enterprise</h4>
@@ -526,7 +691,7 @@ const BillingTab = () => (
                     <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-emerald-500" /> Dedicated support</li>
                     <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-emerald-500" /> SLA guarantee</li>
                 </ul>
-                <button className="mt-6 w-full px-4 py-2 border border-purple-300 text-purple-600 rounded-lg text-sm font-medium hover:bg-purple-50">Contact Sales</button>
+                <button onClick={() => handleUpgrade('Enterprise')} className="mt-6 w-full px-4 py-2 border border-purple-300 text-purple-600 rounded-lg text-sm font-medium hover:bg-purple-50">Contact Sales</button>
             </div>
         </div>
         <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
@@ -553,7 +718,7 @@ const BillingTab = () => (
                                 <td className="px-4 py-4 text-sm text-gray-700">{item.plan}</td>
                                 <td className="px-4 py-4 text-sm font-medium text-gray-900">{item.amount}</td>
                                 <td className="px-4 py-4"><span className="px-2 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">{item.status}</span></td>
-                                <td className="px-4 py-4 text-right"><button className="text-cyan-600 hover:text-cyan-800 text-sm font-medium">Download</button></td>
+                                <td className="px-4 py-4 text-right"><button onClick={() => handleDownloadInvoice(item.date)} className="text-cyan-600 hover:text-cyan-800 text-sm font-medium">Download</button></td>
                             </tr>
                         ))}
                     </tbody>
@@ -561,7 +726,47 @@ const BillingTab = () => (
             </div>
         </div>
     </div>
-);
+    );
+};
+
+const IntegrationsTab = () => {
+    const handleConnect = (name) => {
+        alert(`Connecting to ${name}... Redirecting to OAuth flow...`);
+    };
+
+    const integrations = [
+        { name: 'Gmail', description: 'Sync emails and contacts', connected: false },
+        { name: 'Outlook', description: 'Calendar and email sync', connected: false },
+        { name: 'Slack', description: 'Team notifications', connected: false },
+        { name: 'Zoom', description: 'Video meeting integration', connected: false },
+        { name: 'HubSpot', description: 'Marketing automation', connected: false },
+        { name: 'Zapier', description: 'Workflow automation', connected: false },
+    ];
+
+    return (
+        <div className="space-y-6">
+            <h3 className="text-lg font-semibold text-gray-900">Third-Party Integrations</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {integrations.map(item => (
+                    <div key={item.name} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                                <Plug className="w-5 h-5 text-gray-500" />
+                            </div>
+                            <div>
+                                <p className="font-medium text-gray-900">{item.name}</p>
+                                <p className="text-sm text-gray-500">{item.description}</p>
+                            </div>
+                        </div>
+                        <button onClick={() => handleConnect(item.name)} className={`px-4 py-2 rounded-lg text-sm font-medium ${item.connected ? 'bg-gray-100 text-gray-600' : 'bg-cyan-50 text-cyan-700 hover:bg-cyan-100'}`}>
+                            {item.connected ? 'Connected' : 'Connect'}
+                        </button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
 
 function getRoleBadge(role) {
     const config = {

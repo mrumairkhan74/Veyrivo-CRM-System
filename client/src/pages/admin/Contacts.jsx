@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 // src/pages/admin/Contacts.jsx
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, X, Users, Download, Building2, CheckCircle } from 'lucide-react';
+import { Plus, Search, Filter, X, Users, Download, Building2, CheckCircle, FileText } from 'lucide-react';
 import ContactsTable from '../../components/AdminLayout/contact/ContactTable';
 import ContactsForm from '../../components/AdminLayout/contact/ContactForm';
 import {
@@ -131,6 +131,64 @@ const Contacts = () => {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  const handleExport = () => {
+    // Export all contacts (not just paginated) - use the full filtered list
+    let filtered = [...ContactsData];
+    
+    // Apply search
+    if (debouncedSearch) {
+      filtered = searchContacts(debouncedSearch);
+    }
+    
+    // Apply filters
+    if (filters.status !== 'all') {
+      filtered = filtered.filter(c => c.status === filters.status);
+    }
+    if (filters.company_id !== 'all') {
+      filtered = filtered.filter(c => c.company_id === filters.company_id);
+    }
+    if (filters.is_decision_maker !== 'all') {
+      const isDM = filters.is_decision_maker === 'true';
+      filtered = filtered.filter(c => c.is_decision_maker === isDM);
+    }
+    if (filters.consent_status !== 'all') {
+      filtered = filtered.filter(c => c.consent_status === filters.consent_status);
+    }
+
+    // Convert to CSV
+    const headers = [
+      'First Name', 'Last Name', 'Email', 'Phone', 'Mobile', 'Title',
+      'Company', 'Decision Maker', 'Status', 'Consent Status', 'Source', 'Owner', 'Created At'
+    ];
+    
+    const rows = filtered.map(c => [
+      c.first_name,
+      c.last_name,
+      c.email,
+      c.phone || '',
+      c.mobile || '',
+      c.title || '',
+      c.company?.name || '',
+      c.is_decision_maker ? 'Yes' : 'No',
+      c.status,
+      c.consent_status,
+      c.source || '',
+      c.owner?.name || '',
+      c.created_at ? new Date(c.created_at).toLocaleDateString() : ''
+    ]);
+    
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    
+    // Download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `contacts-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
 
   const handlePageChange = (page) => {
     if (page < 1 || page > pagination.totalPages) return;
@@ -281,6 +339,7 @@ const Contacts = () => {
         </div>
         <div className="flex items-center gap-3">
           <button
+            onClick={handleExport}
             className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
           >
             <Download className="w-4 h-4" />
