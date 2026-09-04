@@ -20,6 +20,7 @@ import Deals from './pages/admin/Deals'
 import Activities from './pages/admin/Activities'
 import Analytics from './pages/admin/Analytics'
 import AIAssistant from './pages/admin/AIAssistant'
+import Settings from './pages/admin/Settings'
 
 const App = () => {
   return (
@@ -41,6 +42,7 @@ const App = () => {
           <Route path="activities" element={<Activities />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="ai" element={<AIAssistant />} />
+          <Route path="settings" element={<Settings />} />
           {/* <Route path="users" element={<Users />} /> */}
         </Route>
         <Route path='/login' element={<Login />} />

@@ -117,9 +117,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
                 <div className="mt-8 border-t border-slate-200 pt-4">
                     <NavLink
-                        to="/settings"
+                        to="/admin/settings"
                         onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-blue-600"
+                        className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-cyan-50 hover:text-cyan-600"
                     >
                         <Settings size={20} />
                         Settings
