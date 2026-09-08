@@ -179,7 +179,7 @@ Best,
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                         <Bot className="w-7 h-7 text-cyan-600" />
@@ -187,21 +187,21 @@ Best,
                     </h1>
                     <p className="text-sm text-gray-500 mt-1">Generate, qualify, and accelerate leads with AI</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
                     <select
                         value={selectedProvider}
                         onChange={(e) => {
                             setSelectedProvider(e.target.value);
                             setSelectedModel(aiProviders.find(p => p.id === e.target.value).models[0]);
                         }}
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none w-full sm:w-auto"
                     >
                         {aiProviders.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                     <select
                         value={selectedModel}
                         onChange={(e) => setSelectedModel(e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none min-w-[180px]"
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none w-full sm:w-auto min-w-[180px]"
                     >
                         {provider?.models.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
@@ -209,7 +209,7 @@ Best,
             </div>
 
             {/* Usage Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
                     <p className="text-sm text-gray-600">Total Requests</p>
                     <p className="mt-1 text-2xl font-bold text-gray-900">{aiUsageStats.totalRequests}</p>
@@ -235,21 +235,21 @@ Best,
             {/* Tabs */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
                 <div className="border-b border-gray-200 overflow-x-auto">
-                    <nav className="flex gap-1 p-1 min-w-max" role="tablist">
+                    <nav className="flex flex-wrap gap-1 p-1" role="tablist">
                         {tabs.map(tab => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 role="tab"
                                 aria-selected={activeTab === tab.id}
-                                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                                     activeTab === tab.id
                                         ? 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white shadow-sm'
                                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                                 }`}
                             >
                                 <tab.icon className="w-4 h-4" />
-                                {tab.label}
+                                <span className="hidden sm:inline">{tab.label}</span>
                             </button>
                         ))}
                     </nav>
@@ -258,7 +258,7 @@ Best,
                 {/* Tab Content */}
                 <div className="p-6">
                     <form key={formKey} onSubmit={handleSubmit} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {promptConfig.parameters.map(param => (
                                 <div key={param} className="space-y-1.5">
                                     <label className="block text-sm font-medium text-gray-700 capitalize">
@@ -275,11 +275,11 @@ Best,
                             ))}
                         </div>
 
-                        <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+                        <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-gray-200">
                             <button
                                 type="button"
                                 onClick={() => setShowHistory(!showHistory)}
-                                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm font-medium"
+                                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm font-medium w-full sm:w-auto"
                             >
                                 <History className="w-4 h-4 inline mr-1" />
                                 History
@@ -288,7 +288,7 @@ Best,
                                 type="button"
                                 onClick={handleStop}
                                 disabled={!isProcessing}
-                                className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
+                                className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium disabled:opacity-50 w-full sm:w-auto"
                             >
                                 <Square className="w-4 h-4 inline mr-1" />
                                 Stop
@@ -296,7 +296,7 @@ Best,
                             <button
                                 type="submit"
                                 disabled={isProcessing}
-                                className="inline-flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="inline-flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
                             >
                                 {isProcessing ? (
                                     <>
@@ -316,7 +316,7 @@ Best,
                     {/* Result Display */}
                     {(result || streamingText) && (
                         <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                            <div className="flex items-center justify-between mb-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
                                 <h3 className="font-semibold text-gray-900">AI Response</h3>
                                 <div className="flex items-center gap-2">
                                     <button onClick={handleCopy} className="p-2 rounded hover:bg-gray-200 transition" title="Copy">
@@ -327,9 +327,11 @@ Best,
                                     </button>
                                 </div>
                             </div>
-                            <pre className="bg-white p-4 rounded-lg border border-gray-200 max-h-96 overflow-auto text-sm font-mono text-gray-800 whitespace-pre-wrap">
-                                {streamingText || result}
-                            </pre>
+                            <div className="overflow-x-auto">
+                                <pre className="bg-white p-4 rounded-lg border border-gray-200 max-h-[60vh] overflow-auto text-sm font-mono text-gray-800 whitespace-pre-wrap break-words">
+                                    {streamingText || result}
+                                </pre>
+                            </div>
                         </div>
                     )}
 
@@ -338,7 +340,8 @@ Best,
                         <div className="mt-6">
                             <h3 className="font-semibold text-gray-900 mb-3">Generation History</h3>
                             <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                                <table className="w-full">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full min-w-[800px]">
                                     <thead className="bg-gray-50 border-b border-gray-200">
                                         <tr>
                                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
@@ -375,7 +378,8 @@ Best,
                                             </tr>
                                         ))}
                                     </tbody>
-                                </table>
+</table>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -393,12 +397,12 @@ Best,
                         const providerInfo = aiProviders.find(p => p.id === providerId);
                         const percentage = (stats.requests / aiUsageStats.thisMonth.requests * 100).toFixed(0);
                         return (
-                            <div key={providerId} className="flex items-center gap-4">
-                                <div className="w-24 text-sm font-medium text-gray-700">{providerInfo?.name || providerId}</div>
+                            <div key={providerId} className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                <div className="w-full sm:w-24 text-sm font-medium text-gray-700">{providerInfo?.name || providerId}</div>
                                 <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
                                     <div className="h-full bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full transition-all" style={{ width: `${percentage}%` }} />
                                 </div>
-                                <div className="w-32 text-right text-sm text-gray-600">
+                                <div className="w-full sm:w-32 text-right text-sm text-gray-600">
                                     {stats.requests} req · {formatCost(stats.cost)}
                                 </div>
                             </div>
