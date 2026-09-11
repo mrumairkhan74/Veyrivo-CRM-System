@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState,useEffect } from 'react';
 import {
     TrendingUp, TrendingDown, DollarSign, Users, Target, Activity,
     RefreshCw, Download
@@ -8,11 +8,12 @@ import {
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     FunnelChart, Funnel
 } from 'recharts';
-import { analyticsData, formatCurrency } from '../../data/AnalyticsData';
+import { useAnalytics } from '../../store/hooks';
 
 const COLORS = ['#06b6d4', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#6366f1', '#ec4899', '#14b8a6'];
 
 const formatNumber = (num) => new Intl.NumberFormat('en-US').format(num);
+const formatCurrency = (value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(value);
 
 const KPICard = ({ label, value, change, icon: Icon, color, format = 'number' }) => (
     <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
@@ -43,23 +44,23 @@ const ChartCard = ({ title, children }) => (
     </div>
 );
 
-const PipelineFunnel = () => (
+const PipelineFunnel = ({ data }) => (
     <ChartCard title="Pipeline Funnel">
         <ResponsiveContainer width="100%" height="100%">
             <FunnelChart>
                 <Funnel
                     dataKey="count"
                     nameKey="stage"
-                    data={analyticsData.pipelineByStage}
+                    data={data}
                     stroke="none"
                     isAnimationActive={false}
                 >
-                    {analyticsData.pipelineByStage.map((entry, index) => (
+                    {data.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                 </Funnel>
                 <Tooltip
-                    formatter={(value) => [formatNumber(value), 'Count']}
+                    formatter={(value) => [new Intl.NumberFormat('en-US').format(value), 'Count']}
                     labelFormatter={(label) => label}
                     contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
                 />
@@ -68,12 +69,12 @@ const PipelineFunnel = () => (
     </ChartCard>
 );
 
-const LeadStatusPie = () => (
+const LeadStatusPie = ({ data }) => (
     <ChartCard title="Leads by Status">
         <ResponsiveContainer width="100%" height="100%">
             <PieChart>
                 <Pie
-                    data={analyticsData.leadsByStatus}
+                    data={data}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -83,12 +84,12 @@ const LeadStatusPie = () => (
                     label={({ status, percentage }) => `${status} ${percentage}%`}
                     labelLine={false}
                 >
-                    {analyticsData.leadsByStatus.map((entry, index) => (
+                    {data.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                 </Pie>
                 <Tooltip
-                    formatter={(value) => [formatNumber(value), 'Count']}
+                    formatter={(value) => [new Intl.NumberFormat('en-US').format(value), 'Count']}
                     contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
                 />
                 <Legend />
@@ -97,15 +98,15 @@ const LeadStatusPie = () => (
     </ChartCard>
 );
 
-const LeadsBySource = () => (
+const LeadsBySource = ({ data }) => (
     <ChartCard title="Leads by Source">
         <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={analyticsData.leadsBySource} layout="vertical">
+            <BarChart data={data} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" tick={{ fill: '#64748b' }} />
                 <YAxis dataKey="source" type="category" width={100} tick={{ fill: '#64748b' }} />
                 <Tooltip
-                    formatter={(value, name) => [formatNumber(value), name === 'count' ? 'Leads' : 'Conversion %']}
+                    formatter={(value, name) => [new Intl.NumberFormat('en-US').format(value), name === 'count' ? 'Leads' : 'Conversion %']}
                     contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
                 />
                 <Bar dataKey="count" fill="#06b6d4" radius={[0, 4, 4, 0]} name="Leads" />
@@ -114,18 +115,18 @@ const LeadsBySource = () => (
     </ChartCard>
 );
 
-const MonthlyTrends = () => (
+const MonthlyTrends = ({ data }) => (
     <ChartCard title="Monthly Trends (6 Months)">
         <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={analyticsData.monthlyTrends}>
+            <LineChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" tick={{ fill: '#64748b' }} />
                 <YAxis tick={{ fill: '#64748b' }} />
                 <Tooltip
                     formatter={(value, name) => {
-                        if (name === 'revenue') return [formatCurrency(value), 'Revenue'];
+                        if (name === 'revenue') return [new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value), 'Revenue'];
                         if (name === 'conversion') return [`${value}%`, 'Conversion'];
-                        return [formatNumber(value), name];
+                        return [new Intl.NumberFormat('en-US').format(value), name];
                     }}
                     contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
                 />
@@ -160,15 +161,15 @@ const MonthlyTrends = () => (
     </ChartCard>
 );
 
-const TeamPerformance = () => (
+const TeamPerformance = ({ data }) => (
     <ChartCard title="Team Performance (Revenue)">
         <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={analyticsData.teamPerformance} layout="vertical">
+            <BarChart data={data} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" tick={{ fill: '#64748b' }} tickFormatter={formatCurrency} />
+                <XAxis type="number" tick={{ fill: '#64748b' }} tickFormatter={(v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v)} />
                 <YAxis dataKey="owner" type="category" width={100} tick={{ fill: '#64748b' }} />
                 <Tooltip
-                    formatter={(value) => [formatCurrency(value), 'Revenue']}
+                    formatter={(value) => [new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value), 'Revenue']}
                     contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
                 />
                 <Bar dataKey="revenue" fill="#8b5cf6" radius={[0, 4, 4, 0]} name="Revenue" />
@@ -177,15 +178,15 @@ const TeamPerformance = () => (
     </ChartCard>
 );
 
-const ServicePerformance = () => (
+const ServicePerformance = ({ data }) => (
     <ChartCard title="Service Performance">
         <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={analyticsData.servicePerformance} layout="vertical">
+            <BarChart data={data} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" tick={{ fill: '#64748b' }} tickFormatter={formatCurrency} />
+                <XAxis type="number" tick={{ fill: '#64748b' }} tickFormatter={(v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v)} />
                 <YAxis dataKey="service" type="category" width={140} tick={{ fill: '#64748b' }} />
                 <Tooltip
-                    formatter={(value, name) => [formatCurrency(value), name === 'revenue' ? 'Revenue' : 'Deals']}
+                    formatter={(value, name) => [new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value), name === 'revenue' ? 'Revenue' : 'Deals']}
                     contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
                 />
                 <Legend />
@@ -196,12 +197,12 @@ const ServicePerformance = () => (
     </ChartCard>
 );
 
-const LeadTemperaturePie = () => (
+const LeadTemperaturePie = ({ data }) => (
     <ChartCard title="Leads by Temperature">
         <ResponsiveContainer width="100%" height="100%">
             <PieChart>
                 <Pie
-                    data={analyticsData.leadsByTemperature}
+                    data={data}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -217,7 +218,7 @@ const LeadTemperaturePie = () => (
                     <Cell fill="#94a3b8" />
                 </Pie>
                 <Tooltip
-                    formatter={(value) => [formatNumber(value), 'Count']}
+                    formatter={(value) => [new Intl.NumberFormat('en-US').format(value), 'Count']}
                     contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
                 />
                 <Legend />
@@ -229,6 +230,7 @@ const LeadTemperaturePie = () => (
 const Analytics = () => {
     const [dateRange, setDateRange] = useState('6m');
     const [isLoading, setIsLoading] = useState(false);
+    const { stats, pipelineByStage, leadsByStatus, leadsBySource, monthlyTrends, teamPerformance, servicePerformance, leadsByTemperature, loading, fetchStats } = useAnalytics();
 
     const dateRangeOptions = [
         { value: '7d', label: 'Last 7 Days' },
@@ -238,8 +240,18 @@ const Analytics = () => {
         { value: '1y', label: 'Last Year' },
     ];
 
-    const kpis = analyticsData.kpis;
-    const revenueChange = ((kpis.revenueThisMonth - kpis.revenueLastMonth) / kpis.revenueLastMonth * 100).toFixed(1);
+    const kpis = stats || {};
+    const revenueChange = kpis.revenueThisMonth && kpis.revenueLastMonth
+        ? ((kpis.revenueThisMonth - kpis.revenueLastMonth) / kpis.revenueLastMonth * 100).toFixed(1)
+        : 0;
+
+    useEffect(() => {
+        fetchStats(dateRange);
+    }, [dateRange]);
+
+    useEffect(() => {
+        fetchStats(dateRange);
+    }, []);
 
     return (
         <div className="space-y-6">
@@ -261,8 +273,8 @@ const Analytics = () => {
                         <Download className="w-4 h-4" />
                         Export
                     </button>
-                    <button onClick={() => { setIsLoading(true); setTimeout(() => setIsLoading(false), 800); }} disabled={isLoading} className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white rounded-lg hover:opacity-90 transition-opacity shadow-sm">
-                        <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                    <button onClick={() => { setIsLoading(true); setTimeout(() => setIsLoading(false), 800); }} disabled={isLoading || loading} className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white rounded-lg hover:opacity-90 transition-opacity shadow-sm">
+                        <RefreshCw className={`w-4 h-4 ${isLoading || loading ? 'animate-spin' : ''}`} />
                         Refresh
                     </button>
                 </div>
@@ -270,28 +282,28 @@ const Analytics = () => {
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                <KPICard label="Total Leads" value={kpis.totalLeads} change={12.8} icon={Users} color="bg-blue-500" />
-                <KPICard label="Qualified Leads" value={kpis.qualifiedLeads} change={8.2} icon={Target} color="bg-purple-500" />
-                <KPICard label="Active Deals" value={kpis.activeDeals} change={5.1} icon={Activity} color="bg-amber-500" />
-                <KPICard label="Conversion Rate" value={kpis.conversionRate} change={4.2} format="percent" icon={TrendingUp} color="bg-emerald-500" />
-                <KPICard label="Pipeline Value" value={kpis.pipelineValue} change={15.3} format="currency" icon={DollarSign} color="bg-cyan-500" />
-                <KPICard label="Revenue (Month)" value={kpis.revenueThisMonth} change={parseFloat(revenueChange)} format="currency" icon={DollarSign} color="bg-indigo-500" />
+                <KPICard label="Total Leads" value={kpis.totalLeads || 0} change={12.8} icon={Users} color="bg-blue-500" />
+                <KPICard label="Qualified Leads" value={kpis.qualifiedLeads || 0} change={8.2} icon={Target} color="bg-purple-500" />
+                <KPICard label="Active Deals" value={kpis.activeDeals || 0} change={5.1} icon={Activity} color="bg-amber-500" />
+                <KPICard label="Conversion Rate" value={kpis.conversionRate || 0} change={4.2} format="percent" icon={TrendingUp} color="bg-emerald-500" />
+                <KPICard label="Pipeline Value" value={kpis.pipelineValue || 0} change={15.3} format="currency" icon={DollarSign} color="bg-cyan-500" />
+                <KPICard label="Revenue (Month)" value={kpis.revenueThisMonth || 0} change={parseFloat(revenueChange)} format="currency" icon={DollarSign} color="bg-indigo-500" />
             </div>
 
             {/* Charts Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <PipelineFunnel />
-                <LeadStatusPie />
-                <LeadsBySource />
-                <LeadTemperaturePie />
+                <PipelineFunnel data={pipelineByStage || []} />
+                <LeadStatusPie data={leadsByStatus || []} />
+                <LeadsBySource data={leadsBySource || []} />
+                <LeadTemperaturePie data={leadsByTemperature || []} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <MonthlyTrends />
-                <TeamPerformance />
+                <MonthlyTrends data={monthlyTrends || []} />
+                <TeamPerformance data={teamPerformance || []} />
             </div>
 
-            <ServicePerformance />
+            <ServicePerformance data={servicePerformance || []} />
         </div>
     );
 };

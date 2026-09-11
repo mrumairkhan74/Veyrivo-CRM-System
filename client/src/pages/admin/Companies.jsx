@@ -1,27 +1,31 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, Filter, X } from 'lucide-react';
 import CompanyTable from '../../components/AdminLayout/company/CompanyTable';
 import CompanyForm from '../../components/AdminLayout/company/CompanyForm';
-import { companies as initialCompanies } from '../../data/CompaniesData';
 import { industries, sources, owners } from '../../data/ReferenceData';
+import { useCompanies } from '../../store/hooks';
 
 const Companies = () => {
-    const [companies, setCompanies] = useState(initialCompanies);
+    const {
+        companies,
+        loading,
+        error,
+        pagination,
+        filters,
+        sort,
+        fetchCompanies,
+        fetchCompany,
+        createCompany,
+        updateCompany,
+        deleteCompany,
+        setFilters,
+        setSort,
+        setPage,
+        clearError,
+    } = useCompanies();
+
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [filters, setFilters] = useState({
-        status: 'all',
-        company_size: 'all',
-        industry: 'all'
-    });
-    const [pagination, setPagination] = useState({
-        currentPage: 1,
-        limit: 10
-    });
-    const [sort, setSort] = useState({
-        field: 'name',
-        direction: 'asc'
-    });
     const [showFilters, setShowFilters] = useState(false);
     const [modalState, setModalState] = useState({
         isOpen: false,
@@ -29,6 +33,14 @@ const Companies = () => {
         company: null
     });
     const [formLoading, setFormLoading] = useState(false);
+
+    useEffect(() => {
+        fetchCompanies();
+    }, []);
+
+    useEffect(() => {
+        fetchCompanies({ page: pagination.page, ...filters, sort: `${sort.field}:${sort.direction}` });
+    }, [pagination.page, filters, sort]);
 
     // Debounced search
     useEffect(() => {
@@ -38,90 +50,19 @@ const Companies = () => {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    // Filter and sort companies
-    const filteredAndSortedCompanies = useMemo(() => {
-        let result = [...companies];
-
-        // Apply search filter
-        if (debouncedSearch) {
-            const term = debouncedSearch.toLowerCase();
-            result = result.filter(company =>
-                company.name?.toLowerCase().includes(term) ||
-                company.domain?.toLowerCase().includes(term) ||
-                company.email?.toLowerCase().includes(term) ||
-                company.website?.toLowerCase().includes(term)
-            );
-        }
-
-        // Apply status filter
-        if (filters.status !== 'all') {
-            result = result.filter(company => company.status === filters.status);
-        }
-
-        // Apply company size filter
-        if (filters.company_size !== 'all') {
-            result = result.filter(company => company.company_size === filters.company_size);
-        }
-
-        // Apply industry filter
-        if (filters.industry !== 'all') {
-            result = result.filter(company => company.industry_id === filters.industry);
-        }
-
-        // Apply sorting
-        result.sort((a, b) => {
-            let aVal = a[sort.field] || '';
-            let bVal = b[sort.field] || '';
-            
-            if (sort.field === 'name') {
-                aVal = a.name?.toLowerCase() || '';
-                bVal = b.name?.toLowerCase() || '';
-            }
-            
-            if (typeof aVal === 'string') {
-                aVal = aVal.toLowerCase();
-                bVal = bVal.toLowerCase();
-            }
-            
-            if (aVal < bVal) return sort.direction === 'asc' ? -1 : 1;
-            if (aVal > bVal) return sort.direction === 'asc' ? 1 : -1;
-            return 0;
-        });
-
-        return result;
-    }, [companies, debouncedSearch, filters, sort]);
-
-    // Pagination derived from filtered data
-    const totalPages = Math.ceil(filteredAndSortedCompanies.length / pagination.limit) || 1;
-    const currentPageData = useMemo(() => {
-        const startIndex = (pagination.currentPage - 1) * pagination.limit;
-        const endIndex = Math.min(startIndex + pagination.limit, filteredAndSortedCompanies.length);
-        return filteredAndSortedCompanies.slice(startIndex, endIndex);
-    }, [filteredAndSortedCompanies, pagination.currentPage, pagination.limit]);
-
-    const handlePageChange = (page) => {
-        if (page < 1 || page > totalPages) return;
-        setPagination(prev => ({ ...prev, currentPage: page }));
-    };
-
-    const handleSort = (field, direction) => {
-        setSort({ field, direction });
-        setPagination(prev => ({ ...prev, currentPage: 1 }));
+    const handleSearch = (e) => {
+        setSearchTerm(e.target.value);
     };
 
     const handleFilterChange = (key, value) => {
-        setFilters(prev => ({ ...prev, [key]: value }));
-        setPagination(prev => ({ ...prev, currentPage: 1 }));
+        setFilters({ ...filters, [key]: value });
+        setPage(1);
     };
 
     const clearFilters = () => {
-        setFilters({
-            status: 'all',
-            company_size: 'all',
-            industry: 'all'
-        });
+        setFilters({ status: 'all', company_size: 'all', industry: 'all' });
         setSearchTerm('');
-        setPagination(prev => ({ ...prev, currentPage: 1 }));
+        setPage(1);
     };
 
     const hasActiveFilters = () => {
@@ -150,49 +91,27 @@ const Companies = () => {
     const handleSave = async (data) => {
         setFormLoading(true);
         try {
-            console.log('Saving company:', data);
-            
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
             if (modalState.mode === 'create') {
-                const newCompany = {
-                    ...data,
-                    id: `company-${crypto.randomUUID()}`,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                };
-                setCompanies(prev => [newCompany, ...prev]);
+                await createCompany(data);
             } else {
-                setCompanies(prev =>
-                    prev.map(c =>
-                        c.id === modalState.company.id
-                            ? { ...c, ...data, updated_at: new Date().toISOString() }
-                            : c
-                    )
-                );
+                await updateCompany(modalState.company.id, data);
             }
             closeModal();
         } catch (error) {
-            console.error('Error saving company:', error);
+            console.error('Save error:', error);
         } finally {
             setFormLoading(false);
         }
     };
 
-    const handleDelete = async () => {
+    const handleDelete = async (company) => {
         if (!confirm('Are you sure you want to delete this company?')) return;
         setFormLoading(true);
         try {
-            console.log('Deleting company:', modalState.company);
-            
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 300));
-            
-            setCompanies(prev => prev.filter(c => c.id !== modalState.company.id));
+            await deleteCompany(company.id);
             closeModal();
         } catch (error) {
-            console.error('Error deleting company:', error);
+            console.error('Delete error:', error);
         } finally {
             setFormLoading(false);
         }
@@ -226,21 +145,18 @@ const Companies = () => {
             </div>
 
             {/* Search and Filters */}
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
                 <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
                         type="text"
                         placeholder="Search companies by name, domain, or email..."
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={handleSearch}
                         className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition-shadow text-sm"
                     />
                     {searchTerm && (
-                        <button
-                            onClick={() => setSearchTerm('')}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                        >
+                        <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                             <X className="w-4 h-4" />
                         </button>
                     )}
@@ -251,22 +167,19 @@ const Companies = () => {
                     className={`inline-flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${showFilters || hasActiveFilters()
                         ? 'border-cyan-500 text-cyan-600 bg-cyan-50'
                         : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                        }`}
+                    }`}
                 >
                     <Filter className="w-4 h-4" />
                     Filters
                     {hasActiveFilters() && (
                         <span className="w-5 h-5 bg-cyan-600 text-white rounded-full text-xs flex items-center justify-center">
-                            {Object.values(filters).filter(v => v !== 'all').length + (searchTerm ? 1 : 0)}
+                            {(filters.status !== 'all' ? 1 : 0) + (filters.company_size !== 'all' ? 1 : 0) + (filters.industry !== 'all' ? 1 : 0) + (searchTerm ? 1 : 0)}
                         </span>
                     )}
                 </button>
 
                 {hasActiveFilters() && (
-                    <button
-                        onClick={clearFilters}
-                        className="inline-flex items-center gap-1 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-                    >
+                    <button onClick={clearFilters} className="inline-flex items-center gap-1 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
                         <X className="w-4 h-4" />
                         Clear all
                     </button>
@@ -275,13 +188,11 @@ const Companies = () => {
 
             {/* Filter Panel */}
             {showFilters && (
-                <div className="bg-white border border-gray-200 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="bg-white border border-gray-200 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                            Status
-                        </label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
                         <select
-                            value={filters.status}
+                            value={filters.status || 'all'}
                             onChange={(e) => handleFilterChange('status', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
                         >
@@ -294,11 +205,9 @@ const Companies = () => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                            Company Size
-                        </label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Company Size</label>
                         <select
-                            value={filters.company_size}
+                            value={filters.company_size || 'all'}
                             onChange={(e) => handleFilterChange('company_size', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
                         >
@@ -312,11 +221,9 @@ const Companies = () => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                            Industry
-                        </label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Industry</label>
                         <select
-                            value={filters.industry}
+                            value={filters.industry || 'all'}
                             onChange={(e) => handleFilterChange('industry', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
                         >
@@ -332,28 +239,55 @@ const Companies = () => {
             )}
 
             {/* Company Table */}
-            <CompanyTable
-                companies={currentPageData}
-                loading={false}
-                onView={(company) => openEditModal(company)}
-                onEdit={(company) => openEditModal(company)}
-                onDelete={(company) => {
-                    setCompanies(prev => prev.filter(c => c.id !== company.id));
-                }}
-                pagination={{
-                    currentPage: pagination.currentPage,
-                    totalPages,
-                    total: filteredAndSortedCompanies.length,
-                    limit: pagination.limit,
-                    filters: Object.fromEntries(
-                        Object.entries(filters).filter(([, v]) => v !== 'all')
-                    )
-                }}
-                onPageChange={handlePageChange}
-                onSort={handleSort}
-                sortField={sort.field}
-                sortDirection={sort.direction}
-            />
+            {loading ? (
+                <div className="overflow-x-auto">
+                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm animate-pulse">
+                        <table className="w-full min-w-[1000px]">
+                            <thead className="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th className="px-5 py-4"><div className="h-4 w-20 bg-gray-200 rounded" /></th>
+                                    <th className="px-5 py-4"><div className="h-4 w-20 bg-gray-200 rounded" /></th>
+                                    <th className="px-5 py-4"><div className="h-4 w-20 bg-gray-200 rounded" /></th>
+                                    <th className="px-5 py-4"><div className="h-4 w-20 bg-gray-200 rounded" /></th>
+                                    <th className="px-5 py-4"><div className="h-4 w-20 bg-gray-200 rounded" /></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {[1, 2, 3, 4, 5].map((_, i) => (
+                                    <tr key={i} className="border-b border-gray-100">
+                                        <td className="px-5 py-4"><div className="h-4 w-24 bg-gray-200 rounded" /></td>
+                                        <td className="px-5 py-4"><div className="h-4 w-24 bg-gray-200 rounded" /></td>
+                                        <td className="px-5 py-4"><div className="h-4 w-24 bg-gray-200 rounded" /></td>
+                                        <td className="px-5 py-4"><div className="h-4 w-24 bg-gray-200 rounded" /></td>
+                                        <td className="px-5 py-4"><div className="h-4 w-24 bg-gray-200 rounded" /></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            ) : (
+                <CompanyTable
+                    companies={companies}
+                    loading={loading}
+                    onView={(company) => openEditModal(company)}
+                    onEdit={(company) => openEditModal(company)}
+                    onDelete={handleDelete}
+                    pagination={{
+                        currentPage: pagination.page,
+                        totalPages: pagination.totalPages,
+                        total: pagination.total,
+                        limit: pagination.limit,
+                        filters: Object.fromEntries(
+                            Object.entries(filters).filter(([, v]) => v && v !== 'all')
+                        )
+                    }}
+                    onPageChange={setPage}
+                    onSort={setSort}
+                    sortField={sort.field}
+                    sortDirection={sort.direction}
+                />
+            )}
 
             {/* Company Form Modal */}
             {modalState.isOpen && (

@@ -135,6 +135,12 @@ export const useDashboard = () => {
     return { stats, pipelineByStage, leadsByStatus, monthlyTrends, teamPerformance, loading, fetchStats };
 };
 
+// Analytics hooks
+export const useAnalytics = () => {
+    const { stats, pipelineByStage, leadsByStatus, leadsBySource, monthlyTrends, teamPerformance, servicePerformance, leadsByTemperature, loading, fetchStats } = useDashboardStore();
+    return { stats, pipelineByStage, leadsByStatus, leadsBySource, monthlyTrends, teamPerformance, servicePerformance, leadsByTemperature, loading, fetchStats };
+};
+
 // AI hooks
 export const useAI = () => {
     const { history, usage, loading, generate, fetchHistory, fetchUsage } = useAIStore();
