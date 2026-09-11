@@ -233,6 +233,156 @@ export const useContactsStore = createCrudStore('contacts', 'contacts');
 export const useDealsStore = createCrudStore('deals', 'deals');
 export const useActivitiesStore = createCrudStore('activities', 'activities');
 
+// Users Store (for team management)
+export const useUsersStore = create(
+    devtools(
+        (set, get) => ({
+            users: [],
+            loading: false,
+            error: null,
+
+            fetchUsers: async () => {
+                set({ loading: true, error: null });
+                try {
+                    const { data, error } = await supabase
+                        .from('profiles')
+                        .select('id, email, full_name, role, avatar_url, created_at, last_sign_in_at')
+                        .order('created_at', { ascending: false });
+
+                    if (error) throw error;
+                    set({ users: data || [], loading: false });
+                    return data;
+                } catch (error) {
+                    set({ error: error.message, loading: false });
+                    throw error;
+                }
+            },
+
+            updateUserRole: async (userId, newRole) => {
+                set({ loading: true });
+                try {
+                    const { error } = await supabase
+                        .from('profiles')
+                        .update({ role: newRole, updated_at: new Date().toISOString() })
+                        .eq('id', userId);
+
+                    if (error) throw error;
+                    set((state) => ({
+                        users: state.users.map(u => u.id === userId ? { ...u, role: newRole } : u),
+                        loading: false,
+                    }));
+                } catch (error) {
+                    set({ error: error.message, loading: false });
+                    throw error;
+                }
+            },
+
+            removeUser: async (userId) => {
+                set({ loading: true });
+                try {
+                    const { error } = await supabase
+                        .from('profiles')
+                        .delete()
+                        .eq('id', userId);
+
+                    if (error) throw error;
+                    set((state) => ({
+                        users: state.users.filter(u => u.id !== userId),
+                        loading: false,
+                    }));
+                } catch (error) {
+                    set({ error: error.message, loading: false });
+                    throw error;
+                }
+            },
+
+            inviteUser: async (email, role) => {
+                set({ loading: true });
+                try {
+                    const { error } = await supabase.auth.admin.inviteUserByEmail(email, {
+                        data: { role },
+                        redirectTo: `${window.location.origin}/login`
+                    });
+                    if (error) throw error;
+                    set({ loading: false });
+                    // Refresh users list
+                    await get().fetchUsers();
+                } catch (error) {
+                    set({ error: error.message, loading: false });
+                    throw error;
+                }
+            },
+
+            updateProfile: async (userId, updates) => {
+                set({ loading: true });
+                try {
+                    const { data, error } = await supabase
+                        .from('profiles')
+                        .update({ ...updates, updated_at: new Date().toISOString() })
+                        .eq('id', userId)
+                        .select()
+                        .single();
+
+                    if (error) throw error;
+                    set((state) => ({
+                        users: state.users.map(u => u.id === userId ? { ...u, ...data } : u),
+                        loading: false,
+                    }));
+                    return data;
+                } catch (error) {
+                    set({ error: error.message, loading: false });
+                    throw error;
+                }
+            },
+
+            uploadAvatar: async (userId, file) => {
+                set({ loading: true });
+                try {
+                    const fileName = `${userId}-${Date.now()}-${file.name}`;
+                    const { error: uploadError } = await supabase.storage
+                        .from('avatars')
+                        .upload(fileName, file, { upsert: true });
+
+                    if (uploadError) throw uploadError;
+
+                    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
+                    const avatarUrl = urlData.publicUrl;
+
+                    const { error } = await supabase
+                        .from('profiles')
+                        .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
+                        .eq('id', userId);
+
+                    if (error) throw error;
+                    set((state) => ({
+                        users: state.users.map(u => u.id === userId ? { ...u, avatar_url: avatarUrl } : u),
+                        loading: false,
+                    }));
+                    return avatarUrl;
+                } catch (error) {
+                    set({ error: error.message, loading: false });
+                    throw error;
+                }
+            },
+
+            changePassword: async (newPassword) => {
+                set({ loading: true });
+                try {
+                    const { error } = await supabase.auth.updateUser({ password: newPassword });
+                    if (error) throw error;
+                    set({ loading: false });
+                } catch (error) {
+                    set({ error: error.message, loading: false });
+                    throw error;
+                }
+            },
+
+            clearError: () => set({ error: null }),
+        }),
+        { name: 'users' }
+    )
+);
+
 // UI Store
 export const useUIStore = create(
     devtools(
@@ -368,6 +518,7 @@ export const useStore = {
     contacts: useContactsStore,
     deals: useDealsStore,
     activities: useActivitiesStore,
+    users: useUsersStore,
     ui: useUIStore,
     dashboard: useDashboardStore,
     ai: useAIStore,

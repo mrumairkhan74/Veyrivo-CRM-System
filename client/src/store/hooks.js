@@ -1,5 +1,5 @@
 // Custom hooks for easier store access
-import { useAuthStore, useLeadsStore, useCompaniesStore, useContactsStore, useDealsStore, useActivitiesStore, useUIStore, useDashboardStore, useAIStore } from './index';
+import { useAuthStore, useLeadsStore, useCompaniesStore, useContactsStore, useDealsStore, useActivitiesStore, useUsersStore, useUIStore, useDashboardStore, useAIStore } from './index';
 
 // Auth hooks
 export const useAuth = () => {
@@ -145,4 +145,22 @@ export const useAnalytics = () => {
 export const useAI = () => {
     const { history, usage, loading, generate, fetchHistory, fetchUsage } = useAIStore();
     return { history, usage, loading, generate, fetchHistory, fetchUsage };
+};
+
+// Users hooks
+export const useUsers = () => {
+    const store = useUsersStore();
+    return {
+        users: store.users,
+        loading: store.loading,
+        error: store.error,
+        fetchUsers: store.fetchUsers,
+        updateUserRole: store.updateUserRole,
+        removeUser: store.removeUser,
+        inviteUser: store.inviteUser,
+        updateProfile: store.updateProfile,
+        uploadAvatar: store.uploadAvatar,
+        changePassword: store.changePassword,
+        clearError: store.clearError,
+    };
 };
