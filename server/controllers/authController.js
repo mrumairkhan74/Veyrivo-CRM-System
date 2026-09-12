@@ -2,33 +2,33 @@ const { supabase, supabaseAdmin } = require('../config/supabase');
 const { generateTokens, verifyRefreshToken, JWT_SECRET } = require('../middleware/auth');
 const { AppError } = require('../middleware/errorHandler');
 const { validateSchema, schemas } = require('../middleware/validators');
-const bcrypt = require('bcrypt');
 
 const register = async (req, res, next) => {
   try {
     const { email, password, name } = req.body;
 
-    // Check if user already exists in Supabase Auth
-    const { data: existingUser } = await supabaseAdmin?.auth.admin.listUsers();
-    const userExists = existingUser?.users?.some(u => u.email === email);
-
-    if (userExists) {
-      throw new AppError('User with this email already exists', 409);
-    }
-
-    // Create user in Supabase Auth (Supabase handles password hashing internally)
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    // Create user in Supabase Auth using regular signup (public)
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
-      password,  // Pass plain password - Supabase hashes it
-      email_confirm: true,
-      user_metadata: { full_name: name },
+      password,
+      options: {
+        data: { full_name: name },
+      }
     });
 
     if (authError) {
+      if (authError.message.includes('already registered') || authError.message.includes('already exists')) {
+        throw new AppError('User with this email already exists', 409);
+      }
       throw new AppError(authError.message, 400);
     }
 
-    // Create user profile in database
+    // If email confirmation is required, user might not be immediately available
+    if (!authData.user) {
+      throw new AppError('Signup successful. Please check your email to confirm your account.', 200);
+    }
+
+    // Create user profile in database (use admin client for profile creation)
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .insert({
@@ -59,7 +59,7 @@ const register = async (req, res, next) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
     res.status(201).json({
