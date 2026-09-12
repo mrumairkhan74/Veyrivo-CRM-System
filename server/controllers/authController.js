@@ -25,7 +25,22 @@ const register = async (req, res, next) => {
 
     // If email confirmation is required, user might not be immediately available
     if (!authData.user) {
-      throw new AppError('Signup successful. Please check your email to confirm your account.', 200);
+      return res.status(201).json({
+        message: 'Signup successful. Please check your email to confirm your account.',
+        requiresConfirmation: true,
+      });
+    }
+
+    // If email confirmation is required but user exists without confirmation
+    if (authData.user && !authData.user.email_confirmed_at) {
+      return res.status(201).json({
+        message: 'Signup successful. Please check your email to confirm your account.',
+        requiresConfirmation: true,
+        user: {
+          id: authData.user.id,
+          email: authData.user.email,
+        }
+      });
     }
 
     // Create user profile in database (use admin client for profile creation)
@@ -42,9 +57,33 @@ const register = async (req, res, next) => {
       .single();
 
     if (profileError) {
-      // If profile creation fails, we should clean up the auth user
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-      throw new AppError('Failed to create user profile', 500);
+      console.error('Profile creation error:', profileError);
+      // Don't delete the auth user, just log the error
+      console.error('Profile creation failed for user:', authData.user.id, profileError);
+      // Still return success since auth user was created
+      const { accessToken, refreshToken } = generateTokens({
+        id: authData.user.id,
+        email,
+        role: 'user',
+      });
+
+      res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+      });
+
+      return res.status(201).json({
+        message: 'User registered successfully (profile creation pending)',
+        user: {
+          id: authData.user.id,
+          email,
+          name,
+          role: 'user',
+        },
+        accessToken,
+      });
     }
 
     // Generate tokens
