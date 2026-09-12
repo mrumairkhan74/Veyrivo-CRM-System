@@ -1,17 +1,57 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     Eye,
     EyeOff,
     LockKeyhole,
     Mail,
     User,
+    Loader2
 } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
-import { Link } from "react-router-dom";
+import { useAuth } from '../store/hooks';
 
 const Signup = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const { register } = useAuth();
+    const navigate = useNavigate();
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+
+        if (password !== confirmPassword) {
+            setError('Passwords do not match');
+            return;
+        }
+        if (password.length < 8) {
+            setError('Password must be at least 8 characters');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await register(email, password, name);
+            navigate('/admin/dashboard');
+        } catch (err) {
+            setError(err.message || 'Signup failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleSignup = () => {
+        // TODO: Implement Google OAuth
+        alert('Google signup coming soon');
+    };
 
     return (
         <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#F8FAFC] px-4 py-10">
@@ -33,7 +73,13 @@ const Signup = () => {
                     </p>
                 </div>
 
-                <form className="space-y-5">
+                {error && (
+                    <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+                        {error}
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-5">
 
                     {/* Full Name */}
                     <div>
@@ -53,8 +99,10 @@ const Signup = () => {
                             <input
                                 id="name"
                                 type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
                                 placeholder="Enter your full name"
-                                className="w-full rounded-xl border border-slate-200 py-3 pl-11 pr-4 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                                className="w-full rounded-xl border border-slate-200 py-3 pl-11 pr-4 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10"
                             />
                         </div>
                     </div>
@@ -77,8 +125,10 @@ const Signup = () => {
                             <input
                                 id="email"
                                 type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 placeholder="Enter your email"
-                                className="w-full rounded-xl border border-slate-200 py-3 pl-11 pr-4 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                                className="w-full rounded-xl border border-slate-200 py-3 pl-11 pr-4 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10"
                             />
                         </div>
                     </div>
@@ -101,8 +151,10 @@ const Signup = () => {
                             <input
                                 id="password"
                                 type={showPassword ? "text" : "password"}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
                                 placeholder="Create a password"
-                                className="w-full rounded-xl border border-slate-200 py-3 pl-11 pr-12 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                                className="w-full rounded-xl border border-slate-200 py-3 pl-11 pr-12 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10"
                             />
 
                             <button
@@ -139,8 +191,10 @@ const Signup = () => {
                             <input
                                 id="confirmPassword"
                                 type={showConfirmPassword ? "text" : "password"}
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
                                 placeholder="Confirm your password"
-                                className="w-full rounded-xl border border-slate-200 py-3 pl-11 pr-12 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                                className="w-full rounded-xl border border-slate-200 py-3 pl-11 pr-12 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10"
                             />
 
                             <button
@@ -162,9 +216,14 @@ const Signup = () => {
                     {/* Create Account */}
                     <button
                         type="submit"
-                        className="w-full rounded-xl bg-blue-600 py-3 font-medium text-white transition hover:bg-blue-700 hover:shadow-lg"
+                        disabled={loading}
+                        className="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 py-3 font-medium text-white transition hover:opacity-90 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Create Account
+                        {loading ? (
+                            <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                        ) : (
+                            'Create Account'
+                        )}
                     </button>
                 </form>
 
@@ -182,6 +241,7 @@ const Signup = () => {
                 {/* Google Signup */}
                 <button
                     type="button"
+                    onClick={handleGoogleSignup}
                     className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white py-3 font-medium text-slate-700 transition hover:bg-slate-50 hover:shadow-md"
                 >
                     <FcGoogle size={22} />
@@ -191,12 +251,9 @@ const Signup = () => {
                 {/* Login */}
                 <p className="mt-6 text-center text-sm text-slate-500">
                     Already have an account?{" "}
-                    <Link
-                        to="/login"
-                        className="font-semibold text-blue-600 hover:text-blue-700"
-                    >
+                    <button onClick={() => navigate('/login')} className="font-semibold text-cyan-600 hover:text-cyan-700 cursor-pointer">
                         Login
-                    </Link>
+                    </button>
                 </p>
 
             </div>
