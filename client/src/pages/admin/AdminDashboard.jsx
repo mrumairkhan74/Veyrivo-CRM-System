@@ -1,11 +1,15 @@
 // src/pages/admin/AdminDashboard.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
     Plus,
     Users,
     Handshake,
     DollarSign,
-    TrendingUp
+    TrendingUp,
+    Clock,
+    Target,
+    ArrowUpRight,
+    BarChart2,
 } from "lucide-react";
 import StatsCard from "../../components/AdminLayout/StatusCard";
 import PipelineOverview from "../../components/AdminLayout/PipelineOverview";
@@ -32,6 +36,18 @@ const AdminDashboard = () => {
         hotLeads: 0,
         followUpsDue: 0
     });
+
+    // Weekly trend data for the featured card
+    const weeklyTrendData = useMemo(() => [
+        { label: "Week 1", value: 120 },
+        { label: "Week 2", value: 135 },
+        { label: "Week 3", value: 128 },
+        { label: "Week 4", value: 142 },
+        { label: "Week 5", value: 155 },
+        { label: "Week 6", value: 148 },
+        { label: "Week 7", value: 167 },
+        { label: "Week 8", value: 172 },
+    ], []);
 
     useEffect(() => {
         // Simulate loading
@@ -93,16 +109,12 @@ const AdminDashboard = () => {
         return `$${value.toFixed(0)}`;
     };
 
+    if (isLoading) {
+        return <DashboardSkeleton />;
+    }
+
     // Card data with real values
     const cardStatus = [
-        {
-            title: "Total Leads",
-            value: stats.totalLeads.toLocaleString(),
-            trend: `+${stats.newLeads} new`,
-            description: "vs Last Week",
-            icon: <Users />,
-            color: "from-blue-500 to-blue-600"
-        },
         {
             title: "Active Deals",
             value: stats.activeDeals.toLocaleString(),
@@ -128,10 +140,6 @@ const AdminDashboard = () => {
             color: "from-amber-500 to-amber-600"
         },
     ];
-
-    if (isLoading) {
-        return <DashboardSkeleton />;
-    }
 
     return (
         <section className="min-h-screen w-full rounded-md border border-slate-200 bg-gradient-to-br from-cyan-200/20 to-purple-200/20 p-2 shadow-md md:p-4">
@@ -171,19 +179,34 @@ const AdminDashboard = () => {
                             </button>
                         ))}
                     </div>
-
-                    <button className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90">
-                        <Plus size={18} />
-                        Add Lead
-                    </button>
-
                 </div>
+
+                <button className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90">
+                    <Plus size={18} />
+                    Add Lead
+                </button>
+
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 m-2 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {cardStatus.map((item) => {
-                    return (
+            {/* Main Grid - Featured Card on Left, 3 Cards on Right */}
+            <div className="m-2 grid grid-cols-1 xl:grid-cols-12 gap-4">
+                {/* Featured Card - Total Leads with Chart */}
+                <div className="xl:col-span-7 xl:row-span-2">
+                    <StatsCard
+                        variant="featured"
+                        title="Total Leads"
+                        value={stats.totalLeads.toLocaleString()}
+                        description="New leads this period"
+                        trend={null}
+                        color="from-blue-500 to-blue-600"
+                        chartData={weeklyTrendData}
+                        chartWidth={0}
+                    />
+                </div>
+
+                {/* Three Cards Column */}
+                <div className="xl:col-span-5 space-y-4">
+                    {cardStatus.map((item) => (
                         <StatsCard
                             key={item.title}
                             title={item.title}
@@ -193,8 +216,8 @@ const AdminDashboard = () => {
                             value={item.value}
                             color={item.color}
                         />
-                    );
-                })}
+                    ))}
+                </div>
             </div>
 
             {/* Pipeline Overview */}
