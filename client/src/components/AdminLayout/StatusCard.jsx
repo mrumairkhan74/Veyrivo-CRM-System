@@ -40,7 +40,7 @@ const StatsCard = ({
 
                 {/* Growth Rate Chart */}
                 <div ref={chartRef} className="h-48 w-full mt-4">
-                    {chartData && chartData.length > 1 && (
+                    {chartData && chartData.length > 1 ? (
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
@@ -54,7 +54,7 @@ const StatsCard = ({
                                     tick={{ fill: "#94a3b8", fontSize: 11 }}
                                     axisLine={false}
                                     tickLine={false}
-                                    tickFormatter={(value) => value >= 1000 ? `${(value/1000).toFixed(0)}k` : value}
+                                    tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value}
                                 />
                                 <Tooltip
                                     contentStyle={{
@@ -76,7 +76,7 @@ const StatsCard = ({
                                 />
                             </LineChart>
                         </ResponsiveContainer>
-                    )} else {(
+                    ) : (
                         <div className="h-full flex items-center justify-center text-slate-400">
                             No data available
                         </div>

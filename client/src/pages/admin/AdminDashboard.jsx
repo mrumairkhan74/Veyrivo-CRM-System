@@ -18,6 +18,7 @@ import UpcomingActivities from "../../components/AdminLayout/UpcomingActivities"
 import LeadSources from "../../components/AdminLayout/LeadSource";
 import AIInsights from "../../components/AdminLayout/AIInsight";
 import { DashboardSkeleton } from "../../components/AdminLayout/Skeleton";
+import { useAuth } from "../../store/hooks";
 
 // Import dummy data
 import { leads as dummyLeads } from "../../data/LeadData";
@@ -36,6 +37,9 @@ const AdminDashboard = () => {
         hotLeads: 0,
         followUpsDue: 0
     });
+
+    const { user } = useAuth();
+    const userName = user?.full_name || user?.email?.split('@')[0] || 'Admin';
 
     // Weekly trend data for the featured card
     const weeklyTrendData = useMemo(() => [
@@ -152,7 +156,7 @@ const AdminDashboard = () => {
                     <h1 className="text-xl font-bold tracking-wide text-slate-700 md:text-2xl">
                         {greeting},{" "}
                         <span className="bg-gradient-to-r from-cyan-500 to-purple-600 bg-clip-text text-transparent">
-                            Admin
+                            {userName}
                         </span>
                     </h1>
 
