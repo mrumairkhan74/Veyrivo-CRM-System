@@ -14,6 +14,7 @@ import AdminLayouts from './layouts/AdminLayouts'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import ConfirmEmail from './pages/ConfirmEmail'
 import Page404 from './pages/Page404'
 import Leads from './pages/admin/Leads'
 import Companies from './pages/admin/Companies'
@@ -55,6 +56,7 @@ const App = () => {
         </Route>
         <Route path='/login' element={<Login />} />
         <Route path='/signup' element={<Signup />} />
+        <Route path='/confirm-email' element={<ConfirmEmail />} />
         <Route path='*' element={<Page404 />} />
       </Routes>
     </BrowserRouter>

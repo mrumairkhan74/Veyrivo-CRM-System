@@ -23,11 +23,12 @@ export const useAuthStore = create(
                 },
 
                 register: async (email, password, name) => {
-                    const { data, error } = await supabase.auth.admin.createUser({
+                    const { data, error } = await supabase.auth.signUp({
                         email,
                         password,
-                        email_confirm: true,
-                        user_metadata: { full_name: name },
+                        options: {
+                            data: { full_name: name },
+                        }
                     });
                     if (error) throw error;
                     return data;

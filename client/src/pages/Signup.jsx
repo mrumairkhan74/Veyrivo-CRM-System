@@ -39,8 +39,16 @@ const Signup = () => {
 
         setLoading(true);
         try {
-            await register(email, password, name);
-            navigate('/admin/dashboard');
+            const response = await register(email, password, name);
+            
+            // Check if email confirmation is required
+            if (response && response.requiresConfirmation) {
+                navigate('/confirm-email', { 
+                    state: { email, message: response.message } 
+                });
+            } else {
+                navigate('/admin/dashboard');
+            }
         } catch (err) {
             setError(err.message || 'Signup failed. Please try again.');
         } finally {
