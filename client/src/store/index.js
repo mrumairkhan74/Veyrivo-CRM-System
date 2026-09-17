@@ -470,10 +470,17 @@ export const useAIStore = create(
             generate: async (type, input, provider = 'openai', model = 'gpt-4o') => {
                 set({ loading: true });
                 try {
+                    // Get auth token from auth store
+                    const { session } = useAuthStore.getState();
+                    const token = session?.access_token;
+
                     // Call backend AI endpoint
                     const response = await fetch('/api/v1/ai/generate', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            ...(token && { 'Authorization': `Bearer ${token}` })
+                        },
                         body: JSON.stringify({ type, input, provider, model }),
                     });
                     const data = await response.json();

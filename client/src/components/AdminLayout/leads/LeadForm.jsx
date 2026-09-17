@@ -57,7 +57,7 @@ const currencyOptions = [
     ["PKR", "PKR"],
 ];
 
-const LeadForm = ({ mode = "create", lead = null, setIsOpen, onSubmit }) => {
+const LeadForm = ({ mode = "create", lead = null, onCancel, onSubmit, loading = false }) => {
     const isEditMode = mode === "edit";
 
     const [formData, setFormData] = useState(() => {
@@ -109,7 +109,7 @@ const LeadForm = ({ mode = "create", lead = null, setIsOpen, onSubmit }) => {
 
                     <button
                         type="button"
-                        onClick={() => setIsOpen(false)}
+                        onClick={onCancel}
                         className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                     >
                         <X size={22} />
@@ -320,7 +320,7 @@ const LeadForm = ({ mode = "create", lead = null, setIsOpen, onSubmit }) => {
 
                         <button
                             type="button"
-                            onClick={() => setIsOpen(false)}
+                            onClick={onCancel}
                             className="rounded-lg border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
                         >
                             Cancel
@@ -328,9 +328,10 @@ const LeadForm = ({ mode = "create", lead = null, setIsOpen, onSubmit }) => {
 
                         <button
                             type="submit"
-                            className="rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-5 py-2.5 text-sm font-medium text-white hover:from-cyan-600 hover:to-purple-700"
+                            disabled={loading}
+                            className="rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-5 py-2.5 text-sm font-medium text-white hover:from-cyan-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {isEditMode ? "Update Lead" : "Create Lead"}
+                            {loading ? "Saving..." : (isEditMode ? "Update Lead" : "Create Lead")}
                         </button>
 
                     </div>
