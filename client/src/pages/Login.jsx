@@ -11,7 +11,7 @@ const Login = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const { login, initialize } = useAuth();
+    const { login, loginWithGoogle, initialize } = useAuth();
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
@@ -29,9 +29,15 @@ const Login = () => {
         }
     };
 
-    const handleGoogleLogin = () => {
-        // TODO: Implement Google OAuth
-        alert('Google login coming soon');
+    const handleGoogleLogin = async () => {
+        setLoading(true);
+        try {
+            await loginWithGoogle();
+            // The OAuth redirect will handle navigation
+        } catch (err) {
+            setError(err.message || 'Google login failed. Please try again.');
+            setLoading(false);
+        }
     };
 
     return (

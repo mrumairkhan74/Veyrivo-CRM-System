@@ -21,7 +21,7 @@ const Signup = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const { register } = useAuth();
+    const { register, loginWithGoogle } = useAuth();
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
@@ -56,9 +56,14 @@ const Signup = () => {
         }
     };
 
-    const handleGoogleSignup = () => {
-        // TODO: Implement Google OAuth
-        alert('Google signup coming soon');
+    const handleGoogleSignup = async () => {
+        setLoading(true);
+        try {
+            await loginWithGoogle();
+        } catch (err) {
+            setError(err.message || 'Google signup failed. Please try again.');
+            setLoading(false);
+        }
     };
 
     return (

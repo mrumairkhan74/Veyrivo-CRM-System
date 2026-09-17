@@ -22,6 +22,17 @@ export const useAuthStore = create(
                     return data;
                 },
 
+                loginWithGoogle: async () => {
+                    const { data, error } = await supabase.auth.signInWithOAuth({
+                        provider: 'google',
+                        options: {
+                            redirectTo: `${window.location.origin}/confirm-email`,
+                        },
+                    });
+                    if (error) throw error;
+                    return data;
+                },
+
                 register: async (email, password, name) => {
                     const { data, error } = await supabase.auth.signUp({
                         email,
