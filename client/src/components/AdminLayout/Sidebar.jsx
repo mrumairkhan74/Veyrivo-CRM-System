@@ -9,10 +9,16 @@ import {
     Settings,
     X,
     Bot,
+    LogOut,
 } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../../store/hooks";
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
+    const userName = user?.full_name || user?.email?.split('@')[0] || 'Admin';
+
     const menuItems = [
         {
             name: "Dashboard",
@@ -56,6 +62,11 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         },
     ];
 
+    const handleLogout = async () => {
+        await logout();
+        navigate('/login');
+    };
+
     return (
         <>
             {/* Mobile Overlay */}
@@ -77,7 +88,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     md:static md:min-h-screen md:translate-x-0
                 `}
             >
-                {/* Mobile Close Button */}
+                <div className="h-full flex flex-col overflow-y-auto md:overflow-visible md:h-auto">
+                    {/* Mobile Close Button */}
                 <div className="mb-6 flex justify-end md:hidden">
                     <button
                         onClick={() => setIsOpen(false)}
@@ -85,6 +97,17 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     >
                         <X size={22} />
                     </button>
+                </div>
+
+                {/* User Profile */}
+                <div className="mb-6 flex items-center gap-3 px-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 text-white">
+                        <User size={20} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 truncate">{userName}</p>
+                        <p className="text-xs text-slate-500 truncate">Admin</p>
+                    </div>
                 </div>
 
                 <p className="mb-4 px-3 text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -104,8 +127,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                                             isActive
                                                 ? "bg-gradient-to-r from-cyan-500 to-purple-600 text-white"
                                                 : "text-slate-600 hover:bg-cyan-50 hover:text-cyan-600"
-                                        }`
-                                    }
+                                        }`}
                                 >
                                     {item.icon}
                                     {item.name}
@@ -115,7 +137,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     </ul>
                 </nav>
 
-                <div className="mt-8 border-t border-slate-200 pt-4">
+                <div className="mt-8 border-t border-slate-200 pt-4 space-y-2">
                     <NavLink
                         to="/admin/settings"
                         onClick={() => setIsOpen(false)}
@@ -124,7 +146,16 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                         <Settings size={20} />
                         Settings
                     </NavLink>
+                    
+                    <button
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-red-600 transition hover:bg-red-50 hover:text-red-700"
+                    >
+                        <LogOut size={20} />
+                        Logout
+                    </button>
                 </div>
+            </div>
             </aside>
         </>
     );

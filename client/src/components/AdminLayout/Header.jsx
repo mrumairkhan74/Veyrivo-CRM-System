@@ -1,6 +1,17 @@
-import { User, Menu } from "lucide-react";
+import { User, Menu, LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../store/hooks";
 
 const Header = ({ setIsSidebarOpen }) => {
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
+    const userName = user?.full_name || user?.email?.split('@')[0] || 'Admin';
+
+    const handleLogout = async () => {
+        await logout();
+        navigate('/login');
+    };
+
     return (
         <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-4 text-slate-900 md:px-8">
             <div className="flex items-center gap-3">
@@ -31,16 +42,19 @@ const Header = ({ setIsSidebarOpen }) => {
                     <User size={20} />
                 </div>
 
-                <div className="hidden sm:block">
-                    <p className="text-sm font-bold text-slate-800">
-                        Admin
-                    </p>
-                    <p className="text-xs text-slate-500">
-                        Administrator
-                    </p>
+                <div className="hidden sm:block text-right">
+                    <p className="text-sm font-bold text-slate-800">{userName}</p>
+                    <p className="text-xs text-slate-500">Admin</p>
                 </div>
-            </div>
 
+                <button
+                    onClick={handleLogout}
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                    title="Logout"
+                >
+                    <LogOut size={20} />
+                </button>
+            </div>
         </header>
     );
 };
