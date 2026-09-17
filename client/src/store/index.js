@@ -18,7 +18,25 @@ export const useAuthStore = create(
                 login: async (email, password) => {
                     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
                     if (error) throw error;
-                    set({ user: data.user, session: data.session });
+                    
+                    // Fetch user profile to get role
+                    if (data.user) {
+                        const { data: profile } = await supabase
+                            .from('profiles')
+                            .select('*')
+                            .eq('id', data.user.id)
+                            .single();
+                        
+                        const userWithProfile = {
+                            ...data.user,
+                            role: profile?.role || 'user',
+                            full_name: profile?.full_name || data.user.user_metadata?.full_name,
+                        };
+                        
+                        set({ user: userWithProfile, session: data.session });
+                    } else {
+                        set({ user: data.user, session: data.session });
+                    }
                     return data;
                 },
 
@@ -62,17 +80,66 @@ export const useAuthStore = create(
                     if (error) throw error;
                 },
 
+                fetchUserProfile: async (userId) => {
+                    const { data: profile, error } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', userId)
+                        .single();
+                    
+                    if (!error && profile) {
+                        set((state) => ({
+                            user: state.user ? { ...state.user, ...profile, role: profile.role || 'user' } : null
+                        }));
+                    }
+                    return profile;
+                },
+
                 initialize: async () => {
                     const { data: { session } } = await supabase.auth.getSession();
                     if (session) {
                         const { data: { user } } = await supabase.auth.getUser();
-                        set({ user, session, loading: false });
+                        if (user) {
+                            // Fetch profile to get role
+                            const { data: profile } = await supabase
+                                .from('profiles')
+                                .select('*')
+                                .eq('id', user.id)
+                                .single();
+                            
+                            const userWithProfile = {
+                                ...user,
+                                role: profile?.role || 'user',
+                                full_name: profile?.full_name || user.user_metadata?.full_name,
+                            };
+                            
+                            set({ user: userWithProfile, session, loading: false });
+                        } else {
+                            set({ user: null, session, loading: false });
+                        }
                     } else {
                         set({ loading: false });
                     }
 
-                    supabase.auth.onAuthStateChange((event, session) => {
-                        set({ session, user: session?.user ?? null, loading: false });
+                    supabase.auth.onAuthStateChange(async (event, session) => {
+                        if (session?.user) {
+                            // Fetch profile for the user
+                            const { data: profile } = await supabase
+                                .from('profiles')
+                                .select('*')
+                                .eq('id', session.user.id)
+                                .single();
+                            
+                            const userWithProfile = {
+                                ...session.user,
+                                role: profile?.role || 'user',
+                                full_name: profile?.full_name || session.user.user_metadata?.full_name,
+                            };
+                            
+                            set({ session, user: userWithProfile, loading: false });
+                        } else {
+                            set({ session, user: session?.user ?? null, loading: false });
+                        }
                     });
                 },
             }),
@@ -434,8 +501,11 @@ export const useDashboardStore = create(
             stats: null,
             pipelineByStage: [],
             leadsByStatus: [],
+            leadsBySource: [],
             monthlyTrends: [],
             teamPerformance: [],
+            servicePerformance: [],
+            leadsByTemperature: [],
             loading: false,
 
             fetchStats: async (days = 30) => {
