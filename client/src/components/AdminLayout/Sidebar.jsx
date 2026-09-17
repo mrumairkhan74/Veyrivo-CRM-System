@@ -10,6 +10,7 @@ import {
     X,
     Bot,
     LogOut,
+    User,
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../store/hooks";
@@ -18,49 +19,62 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const userName = user?.full_name || user?.email?.split('@')[0] || 'Admin';
+    const userRole = user?.role || 'user';
 
-    const menuItems = [
+    // Filter menu items based on user role
+    const allMenuItems = [
         {
             name: "Dashboard",
             icon: <LayoutDashboard size={20} />,
             path: "/admin/dashboard",
+            roles: ["admin", "user"],
         },
         {
             name: "Leads",
             icon: <Users size={20} />,
             path: "/admin/leads",
+            roles: ["admin"],
         },
         {
             name: "Companies",
             icon: <Building2 size={20} />,
             path: "/admin/companies",
+            roles: ["admin"],
         },
         {
             name: "Contacts",
             icon: <Contact size={20} />,
             path: "/admin/contacts",
+            roles: ["admin"],
         },
         {
             name: "Deals",
             icon: <Handshake size={20} />,
             path: "/admin/deals",
+            roles: ["admin"],
         },
         {
             name: "Activities",
             icon: <CalendarCheck size={20} />,
             path: "/admin/activities",
+            roles: ["admin"],
         },
         {
             name: "Analytics",
             icon: <BarChart3 size={20} />,
             path: "/admin/analytics",
+            roles: ["admin"],
         },
         {
             name: "AI Assistant",
             icon: <Bot size={20} />,
             path: "/admin/ai",
+            roles: ["admin"],
         },
     ];
+
+    // Filter menu items based on user role
+    const menuItems = allMenuItems.filter(item => item.roles.includes(userRole));
 
     const handleLogout = async () => {
         await logout();

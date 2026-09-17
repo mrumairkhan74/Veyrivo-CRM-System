@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect } from 'react';
 import { useAuthStore } from './store';
+import ProtectedRoute from './components/AdminLayout/ProtectedRoute';
 
 // Public pages with public layout. 
 // In this none login user can view as he want
@@ -44,14 +45,15 @@ const App = () => {
         <Route path="/admin" element={<AdminLayouts />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="leads" element={<Leads />} />
-          <Route path="companies" element={<Companies />} />
-          <Route path="contacts" element={<Contacts />} />
-          <Route path="deals" element={<Deals />} />
-          <Route path="activities" element={<Activities />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="ai" element={<AIAssistant />} />
-          <Route path="settings" element={<Settings />} />
+          {/* Admin-only routes - wrapped with ProtectedRoute */}
+          <Route path="leads" element={<ProtectedRoute requiredRole="admin"><Leads /></ProtectedRoute>} />
+          <Route path="companies" element={<ProtectedRoute requiredRole="admin"><Companies /></ProtectedRoute>} />
+          <Route path="contacts" element={<ProtectedRoute requiredRole="admin"><Contacts /></ProtectedRoute>} />
+          <Route path="deals" element={<ProtectedRoute requiredRole="admin"><Deals /></ProtectedRoute>} />
+          <Route path="activities" element={<ProtectedRoute requiredRole="admin"><Activities /></ProtectedRoute>} />
+          <Route path="analytics" element={<ProtectedRoute requiredRole="admin"><Analytics /></ProtectedRoute>} />
+          <Route path="ai" element={<ProtectedRoute requiredRole="admin"><AIAssistant /></ProtectedRoute>} />
+          <Route path="settings" element={<ProtectedRoute requiredRole="admin"><Settings /></ProtectedRoute>} />
           {/* <Route path="users" element={<Users />} /> */}
         </Route>
         <Route path='/login' element={<Login />} />
