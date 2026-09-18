@@ -116,7 +116,7 @@ const validateSchema = (schema) => (req, res, next) => {
   const errors = [];
 
   for (const [field, rules] of Object.entries(schema)) {
-    const value = req.body[field];
+    const value = req.body?.[field];
 
     // Required check
     if (rules.required && (value === undefined || value === null || value === '')) {

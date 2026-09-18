@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect } from 'react';
 import { useAuthStore } from './store';
 import ProtectedRoute from './components/AdminLayout/ProtectedRoute';
-
+import AuthCallback from './pages/AuthCallback';
 // Public pages with public layout. 
 // In this none login user can view as he want
 import PublicLayouts from './layouts/PublicLayouts'
@@ -30,7 +30,9 @@ const App = () => {
   const initialize = useAuthStore((state) => state.initialize);
 
   useEffect(() => {
-    initialize();
+    let subscription;
+    initialize().then((sub) => { subscription = sub; });
+    return () => subscription?.unsubscribe();
   }, [initialize]);
 
   return (
@@ -59,6 +61,7 @@ const App = () => {
         <Route path='/login' element={<Login />} />
         <Route path='/signup' element={<Signup />} />
         <Route path='/confirm-email' element={<ConfirmEmail />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path='*' element={<Page404 />} />
       </Routes>
     </BrowserRouter>

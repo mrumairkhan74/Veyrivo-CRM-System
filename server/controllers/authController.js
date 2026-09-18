@@ -3,97 +3,91 @@ const { generateTokens, verifyRefreshToken, JWT_SECRET } = require('../middlewar
 const { AppError } = require('../middleware/errorHandler');
 const { validateSchema, schemas } = require('../middleware/validators');
 
+
 const register = async (req, res, next) => {
   try {
     const { email, password, name } = req.body;
 
-    // Create user in Supabase Auth using regular signup (public)
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: name },
-      }
-    });
+    // 1. Create user in Supabase Auth
+    const { data: authData, error: authError } =
+      await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+          },
+        },
+      });
 
     if (authError) {
-      if (authError.message.includes('already registered') || authError.message.includes('already exists')) {
-        throw new AppError('User with this email already exists', 409);
+      if (
+        authError.message.includes('already registered') ||
+        authError.message.includes('already exists')
+      ) {
+        throw new AppError(
+          'User with this email already exists',
+          409
+        );
       }
+
       throw new AppError(authError.message, 400);
     }
 
-    // If email confirmation is required, user might not be immediately available
     if (!authData.user) {
-      return res.status(201).json({
-        message: 'Signup successful. Please check your email to confirm your account.',
-        requiresConfirmation: true,
-      });
+      throw new AppError('User could not be created', 400);
     }
 
-    // If email confirmation is required but user exists without confirmation
-    if (authData.user && !authData.user.email_confirmed_at) {
+    // 2. Create profile immediately
+    //    Do NOT wait for email confirmation.
+    const { data: profile, error: profileError } =
+      await supabaseAdmin
+        .from('profiles')
+        .insert({
+          id: authData.user.id,
+          email: authData.user.email,
+          full_name: name,
+          role: 'user',
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+    if (profileError) {
+      console.error('Profile creation error:', profileError);
+
+      // Auth user exists but profile failed.
+      // This should be treated as a server error.
+      throw new AppError(
+        `User created but profile creation failed: ${profileError.message}`,
+        500
+      );
+    }
+
+    // 3. Email confirmation check
+    if (!authData.user.email_confirmed_at) {
       return res.status(201).json({
-        message: 'Signup successful. Please check your email to confirm your account.',
+        message:
+          'Signup successful. Please check your email to confirm your account.',
         requiresConfirmation: true,
         user: {
           id: authData.user.id,
           email: authData.user.email,
-        }
-      });
-    }
-
-    // Create user profile in database (use admin client for profile creation)
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .insert({
-        id: authData.user.id,
-        email,
-        full_name: name,
-        role: 'user',
-        created_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (profileError) {
-      console.error('Profile creation error:', profileError);
-      // Don't delete the auth user, just log the error
-      console.error('Profile creation failed for user:', authData.user.id, profileError);
-      // Still return success since auth user was created
-      const { accessToken, refreshToken } = generateTokens({
-        id: authData.user.id,
-        email,
-        role: 'user',
-      });
-
-      res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-      });
-
-      return res.status(201).json({
-        message: 'User registered successfully (profile creation pending)',
-        user: {
-          id: authData.user.id,
-          email,
-          name,
-          role: 'user',
+          name: profile.full_name,
+          role: profile.role,
         },
-        accessToken,
       });
     }
 
-    // Generate tokens
+    // 4. If email is already confirmed,
+    //    create application tokens.
     const { accessToken, refreshToken } = generateTokens({
       id: authData.user.id,
-      email,
-      role: 'user',
+      email: authData.user.email,
+      role: profile.role,
     });
 
-    // Set refresh token in httpOnly cookie
+    // 5. Set refresh token
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -101,13 +95,13 @@ const register = async (req, res, next) => {
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       message: 'User registered successfully',
       user: {
         id: authData.user.id,
-        email,
-        name,
-        role: 'user',
+        email: authData.user.email,
+        name: profile.full_name,
+        role: profile.role,
       },
       accessToken,
     });
@@ -115,35 +109,67 @@ const register = async (req, res, next) => {
     next(error);
   }
 };
+
 
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    // Sign in with Supabase
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    // 1. Sign in with Supabase
+    const { data, error } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
     if (error) {
       throw new AppError('Invalid email or password', 401);
     }
 
-    // Get user profile
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', data.user.id)
-      .single();
+    // 2. Check email confirmation
+    if (!data.user.email_confirmed_at) {
+      return res.status(403).json({
+        error: 'Email not confirmed',
+        message:
+          'Please confirm your email before logging in.',
+        requiresConfirmation: true,
+      });
+    }
 
+    // 3. Get user profile
+    const { data: profile, error: profileError } =
+      await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+
+    // Profile should always exist for a registered user
+    if (profileError || !profile) {
+      console.error('Profile lookup error:', profileError);
+
+      throw new AppError(
+        'User profile not found',
+        404
+      );
+    }
+
+    // 4. Check account status
+    if (profile.is_active === false) {
+      throw new AppError(
+        'Your account has been deactivated',
+        403
+      );
+    }
+
+    // 5. Generate application tokens
     const { accessToken, refreshToken } = generateTokens({
       id: data.user.id,
       email: data.user.email,
-      role: profile?.role || 'user',
+      role: profile.role,
     });
 
-    // Set refresh token in httpOnly cookie
+    // 6. Set refresh token
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -151,13 +177,16 @@ const login = async (req, res, next) => {
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
-    res.json({
+    // 7. Return logged-in user
+    return res.status(200).json({
       message: 'Login successful',
       user: {
         id: data.user.id,
         email: data.user.email,
-        name: profile?.full_name || data.user.user_metadata?.full_name,
-        role: profile?.role || 'user',
+        name:
+          profile.full_name ||
+          data.user.user_metadata?.full_name,
+        role: profile.role,
       },
       accessToken,
     });
@@ -165,6 +194,7 @@ const login = async (req, res, next) => {
     next(error);
   }
 };
+
 
 const logout = async (req, res, next) => {
   try {
@@ -255,7 +285,7 @@ const updateProfile = async (req, res, next) => {
   try {
     const { name, avatar_url } = req.body;
 
-    const { data: profile, error } = await supabase
+    const { data: profile, error } = await supabaseAdmin
       .from('profiles')
       .update({
         full_name: name,
@@ -264,7 +294,7 @@ const updateProfile = async (req, res, next) => {
       })
       .eq('id', req.user.id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError(error.message, 400);
 
@@ -275,8 +305,8 @@ const updateProfile = async (req, res, next) => {
 };
 
 module.exports = {
-  register: [validateSchema(schemas.register), register],
-  login: [validateSchema(schemas.login), login],
+  register,
+  login,
   logout,
   me,
   refresh,

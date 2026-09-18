@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { supabase } from '../services/api';
 
+
+
 // Auth Store
 export const useAuthStore = create(
     devtools(
@@ -18,7 +20,7 @@ export const useAuthStore = create(
                 login: async (email, password) => {
                     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
                     if (error) throw error;
-                    
+
                     // Fetch user profile to get role
                     if (data.user) {
                         const { data: profile } = await supabase
@@ -26,13 +28,13 @@ export const useAuthStore = create(
                             .select('*')
                             .eq('id', data.user.id)
                             .single();
-                        
+
                         const userWithProfile = {
                             ...data.user,
                             role: profile?.role || 'user',
                             full_name: profile?.full_name || data.user.user_metadata?.full_name,
                         };
-                        
+
                         set({ user: userWithProfile, session: data.session });
                     } else {
                         set({ user: data.user, session: data.session });
@@ -44,7 +46,7 @@ export const useAuthStore = create(
                     const { data, error } = await supabase.auth.signInWithOAuth({
                         provider: 'google',
                         options: {
-                            redirectTo: `${window.location.origin}/confirm-email`,
+                            redirectTo: `${window.location.origin}/auth/callback`,
                         },
                     });
                     if (error) throw error;
@@ -86,7 +88,7 @@ export const useAuthStore = create(
                         .select('*')
                         .eq('id', userId)
                         .single();
-                    
+
                     if (!error && profile) {
                         set((state) => ({
                             user: state.user ? { ...state.user, ...profile, role: profile.role || 'user' } : null
@@ -106,13 +108,13 @@ export const useAuthStore = create(
                                 .select('*')
                                 .eq('id', user.id)
                                 .single();
-                            
+
                             const userWithProfile = {
                                 ...user,
                                 role: profile?.role || 'user',
                                 full_name: profile?.full_name || user.user_metadata?.full_name,
                             };
-                            
+
                             set({ user: userWithProfile, session, loading: false });
                         } else {
                             set({ user: null, session, loading: false });
@@ -129,18 +131,62 @@ export const useAuthStore = create(
                                 .select('*')
                                 .eq('id', session.user.id)
                                 .single();
-                            
+
                             const userWithProfile = {
                                 ...session.user,
                                 role: profile?.role || 'user',
                                 full_name: profile?.full_name || session.user.user_metadata?.full_name,
                             };
-                            
+
                             set({ session, user: userWithProfile, loading: false });
                         } else {
                             set({ session, user: session?.user ?? null, loading: false });
                         }
                     });
+                    // ⚠️ SYNCHRONOUS callback — no async, no await
+                    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+                        (event, session) => {
+                            // Ignore events that don't change the user
+                            if (event === 'TOKEN_REFRESHED') {
+                                // Just refresh the token in state, don't re-fetch profile
+                                set({ session });
+                                return;
+                            }
+
+                            if (event === 'SIGNED_OUT') {
+                                set({ user: null, session: null, loading: false });
+                                return;
+                            }
+
+                            if (session?.user) {
+                                // Schedule the async work outside the callback (avoids deadlock)
+                                queueMicrotask(async () => {
+                                    try {
+                                        const { data: profile } = await supabase
+                                            .from('profiles')
+                                            .select('*')
+                                            .eq('id', session.user.id)
+                                            .single();
+
+                                        const userWithProfile = {
+                                            ...session.user,
+                                            role: profile?.role || 'user',
+                                            full_name: profile?.full_name || session.user.user_metadata?.full_name,
+                                        };
+
+                                        set({ session, user: userWithProfile, loading: false });
+                                    } catch (err) {
+                                        console.error('Profile fetch in onAuthStateChange failed:', err);
+                                        set({ session, user: session.user, loading: false });
+                                    }
+                                });
+                            } else {
+                                set({ session: null, user: null, loading: false });
+                            }
+                        }
+                    );
+
+                    return subscription;
                 },
             }),
             {
@@ -558,7 +604,7 @@ export const useAIStore = create(
                     // Call backend AI endpoint
                     const response = await fetch('/api/v1/ai/generate', {
                         method: 'POST',
-                        headers: { 
+                        headers: {
                             'Content-Type': 'application/json',
                             ...(token && { 'Authorization': `Bearer ${token}` })
                         },

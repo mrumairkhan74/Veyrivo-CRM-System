@@ -7,6 +7,8 @@ export const useAuth = () => {
     return { user, session, loading, login, logout, register, updateProfile, changePassword, initialize };
 };
 
+
+
 // CRUD hooks
 export const useLeads = () => {
     const store = useLeadsStore();
