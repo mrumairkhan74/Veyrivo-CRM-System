@@ -3,8 +3,8 @@ import { useAuthStore, useLeadsStore, useCompaniesStore, useContactsStore, useDe
 
 // Auth hooks
 export const useAuth = () => {
-    const { user, session, loading, login, logout, register, updateProfile, changePassword, initialize } = useAuthStore();
-    return { user, session, loading, login, logout, register, updateProfile, changePassword, initialize };
+    const { user, session, loading, login, logout, register, updateProfile, changePassword, initialize, loginWithGoogle } = useAuthStore();
+    return { user, session, loading, login, logout, register, updateProfile, changePassword, initialize, loginWithGoogle };
 };
 
 
