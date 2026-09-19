@@ -1,3 +1,45 @@
+import { useEffect, useRef, useState } from 'react';
+import { supabase } from '../services/api'; // your path
+
+const WATCHED_TABLES = ['leads', 'deals', 'companies', 'contacts', 'activities'];
+
+export const useRealtimeAnalytics = (onChange) => {
+    const [isConnected, setIsConnected] = useState(false);
+    const channelRef = useRef(null);
+    const callbackRef = useRef(onChange);
+
+    // Keep latest callback without re-subscribing the channel
+    useEffect(() => { callbackRef.current = onChange; }, [onChange]);
+
+    useEffect(() => {
+        const channel = supabase.channel('analytics-realtime');
+
+        WATCHED_TABLES.forEach((table) => {
+            channel.on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table },
+                (payload) => callbackRef.current?.(table, payload)
+            );
+        });
+
+        channel.subscribe((status) => {
+            setIsConnected(status === 'SUBSCRIBED');
+        });
+
+        channelRef.current = channel;
+
+        return () => {
+            if (channelRef.current) {
+                supabase.removeChannel(channelRef.current);
+                channelRef.current = null;
+            }
+        };
+    }, []);
+
+    return { isConnected };
+};
+
+
 export const analyticsData = {
     // Pipeline by stage
     pipelineByStage: [

@@ -1,8 +1,9 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
 import { Plus, Search, Filter, X } from 'lucide-react';
 import CompanyTable from '../../components/AdminLayout/company/CompanyTable';
 import CompanyForm from '../../components/AdminLayout/company/CompanyForm';
-import { industries, sources, owners } from '../../data/ReferenceData';
+import { useReferenceData } from '../../data/ReferenceData';
 import { useCompanies } from '../../store/hooks';
 
 const Companies = () => {
@@ -23,7 +24,7 @@ const Companies = () => {
         setPage,
         clearError,
     } = useCompanies();
-
+    const { industries, sources, owners } = useReferenceData();
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [showFilters, setShowFilters] = useState(false);
@@ -167,7 +168,7 @@ const Companies = () => {
                     className={`inline-flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${showFilters || hasActiveFilters()
                         ? 'border-cyan-500 text-cyan-600 bg-cyan-50'
                         : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
+                        }`}
                 >
                     <Filter className="w-4 h-4" />
                     Filters

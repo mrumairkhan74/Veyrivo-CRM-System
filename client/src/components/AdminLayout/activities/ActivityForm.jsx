@@ -1,12 +1,17 @@
 import { useState, useCallback } from 'react';
-import { X, User, Building2, Calendar, Clock, Save, Trash2, Phone, Mail, Calendar as CalIcon, CheckSquare, FileText } from 'lucide-react';
+import {
+    X, User, Building2, Calendar, Clock, Save, Trash2,
+    Phone, Calendar as CalIcon, FileText
+} from 'lucide-react';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const activityTypeOptions = [
-    { value: 'call', label: 'Call', icon: Phone, color: 'bg-green-500' },
-    { value: 'meeting', label: 'Meeting', icon: CalIcon, color: 'bg-blue-500' },
-    { value: 'email', label: 'Email', icon: Mail, color: 'bg-purple-500' },
-    { value: 'task', label: 'Task', icon: CheckSquare, color: 'bg-amber-500' },
-    { value: 'note', label: 'Note', icon: FileText, color: 'bg-gray-500' },
+    { value: 'call', label: 'Call' },
+    { value: 'meeting', label: 'Meeting' },
+    { value: 'email', label: 'Email' },
+    { value: 'task', label: 'Task' },
+    { value: 'note', label: 'Note' },
 ];
 
 const activityStatusOptions = [
@@ -22,14 +27,6 @@ const priorityOptions = [
     { value: 'low', label: 'Low' },
 ];
 
-const ownerOptions = [
-    { value: 'Ahmed Khan', label: 'Ahmed Khan' },
-    { value: 'Sarah Ahmed', label: 'Sarah Ahmed' },
-    { value: 'Muhammad Ali', label: 'Muhammad Ali' },
-    { value: 'Fatima Hassan', label: 'Fatima Hassan' },
-    { value: 'Usman Tariq', label: 'Usman Tariq' },
-];
-
 const relatedToOptions = [
     { value: 'lead', label: 'Lead' },
     { value: 'deal', label: 'Deal' },
@@ -37,6 +34,14 @@ const relatedToOptions = [
     { value: 'contact', label: 'Contact' },
     { value: 'none', label: 'None (General)' },
 ];
+
+const toLocalInput = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
 
 const emptyFormData = {
     title: '',
@@ -48,15 +53,17 @@ const emptyFormData = {
     related_name: '',
     contact: '',
     company: '',
-    scheduled_at: new Date().toISOString().slice(0, 16),
+    scheduled_at: toLocalInput(new Date().toISOString()),
     completed_at: '',
     duration: 0,
     notes: '',
     outcome: '',
     next_action: '',
     next_action_date: '',
-    owner: 'Ahmed Khan',
+    owner_id: '',
 };
+
+/* ---------- Field components (module scope) ---------- */
 
 const InputField = ({ label, name, type = 'text', placeholder = '', required = false, icon: Icon, value, onChange, onBlur, error, ...props }) => (
     <div className="space-y-1.5">
@@ -72,7 +79,9 @@ const InputField = ({ label, name, type = 'text', placeholder = '', required = f
                 onChange={onChange}
                 onBlur={onBlur}
                 placeholder={placeholder}
-                className={`w-full ${Icon ? 'pl-9' : 'pl-3'} pr-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition-shadow ${error ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                className={`w-full ${Icon ? 'pl-9' : 'pl-3'} pr-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition-shadow ${
+                    error ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
                 {...props}
             />
         </div>
@@ -91,12 +100,14 @@ const SelectField = ({ label, name, options, placeholder = 'Select...', required
                 name={name}
                 value={value ?? ''}
                 onChange={onChange}
-                className={`w-full ${Icon ? 'pl-9' : 'pl-3'} pr-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none appearance-none bg-white ${error ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                className={`w-full ${Icon ? 'pl-9' : 'pl-3'} pr-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none appearance-none bg-white ${
+                    error ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
                 {...props}
             >
                 <option value="">{placeholder}</option>
-                {options.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
+                {options.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
             </select>
         </div>
@@ -114,11 +125,15 @@ const TextAreaField = ({ label, name, placeholder = '', rows = 3, value, onChang
             onBlur={onBlur}
             placeholder={placeholder}
             rows={rows}
-            className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition-shadow resize-y ${error ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+            className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition-shadow resize-y ${
+                error ? 'border-red-300 bg-red-50' : 'border-gray-300'
+            }`}
         />
         {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
     </div>
 );
+
+/* ---------- Form ---------- */
 
 const ActivityForm = ({
     mode = 'create',
@@ -127,6 +142,7 @@ const ActivityForm = ({
     onCancel,
     onDelete,
     loading = false,
+    owners = [],
 }) => {
     const [formData, setFormData] = useState(() => {
         if (mode === 'edit' && activity) {
@@ -140,31 +156,35 @@ const ActivityForm = ({
                 related_name: activity.related_name || '',
                 contact: activity.contact || '',
                 company: activity.company || '',
-                scheduled_at: activity.scheduled_at ? activity.scheduled_at.slice(0, 16) : new Date().toISOString().slice(0, 16),
-                completed_at: activity.completed_at ? activity.completed_at.slice(0, 16) : '',
-                duration: activity.duration || 0,
+                scheduled_at: toLocalInput(activity.scheduled_at) || toLocalInput(new Date().toISOString()),
+                completed_at: toLocalInput(activity.completed_at),
+                duration: activity.duration ?? 0,
                 notes: activity.notes || '',
                 outcome: activity.outcome || '',
                 next_action: activity.next_action || '',
                 next_action_date: activity.next_action_date || '',
-                owner: activity.owner || 'Ahmed Khan',
+                owner_id: activity.owner_id || '',
             };
         }
         return emptyFormData;
     });
+
     const [errors, setErrors] = useState({});
     const [touched, setTouched] = useState({});
 
     const validateField = useCallback((name, value) => {
         switch (name) {
             case 'title':
-                return (!value || value.trim().length < 2) ? 'Title is required (min 2 characters)' : '';
+                return !value || value.trim().length < 2 ? 'Title is required (min 2 characters)' : '';
             case 'scheduled_at':
-                return (!value) ? 'Scheduled date/time is required' : '';
+                return !value ? 'Scheduled date/time is required' : '';
             case 'duration':
-                return (value && (isNaN(value) || parseInt(value) < 0)) ? 'Duration must be a positive number' : '';
-            case 'next_action_date':
-                return (value && new Date(value) < new Date()) ? 'Next action date cannot be in the past' : '';
+                return value && (isNaN(value) || parseInt(value, 10) < 0) ? 'Duration must be a positive number' : '';
+            case 'related_id':
+                // only validate if the user typed something AND a related_to is set
+                if (!value) return '';
+                if (!UUID_RE.test(value)) return 'Related ID must be a valid UUID (e.g. from a lead/company row)';
+                return '';
             default:
                 return '';
         }
@@ -172,74 +192,116 @@ const ActivityForm = ({
 
     const handleChange = useCallback((e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-        const error = validateField(name, value);
-        setErrors(prev => ({ ...prev, [name]: error }));
-        
-        // Auto-set completed_at when status changes to completed
-        if (name === 'status' && value === 'completed') {
-            setFormData(prev => {
-                if (!prev.completed_at) {
-                    return { ...prev, completed_at: new Date().toISOString().slice(0, 16) };
-                }
-                return prev;
-            });
-        }
+
+        setFormData((prev) => {
+            const next = { ...prev, [name]: value };
+
+            // Auto-set completed_at when status flips to completed
+            if (name === 'status' && value === 'completed' && !next.completed_at) {
+                next.completed_at = toLocalInput(new Date().toISOString());
+            }
+
+            // Clear related_id / related_name when related_to changes
+            if (name === 'related_to' && value === 'none') {
+                next.related_id = '';
+                next.related_name = '';
+            }
+
+            return next;
+        });
+
+        setErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
     }, [validateField]);
 
     const handleBlur = useCallback((e) => {
-        const { name } = e.target;
-        setTouched(prev => ({ ...prev, [name]: true }));
-        const error = validateField(name, formData[name]);
-        setErrors(prev => ({ ...prev, [name]: error }));
-    }, [validateField, formData]);
+        const { name, value } = e.target;
+        setTouched((prev) => ({ ...prev, [name]: true }));
+        setErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+    }, [validateField]);
 
     const validateForm = useCallback(() => {
         const newErrors = {};
         let isValid = true;
-        Object.keys(formData).forEach(key => {
-            const error = validateField(key, formData[key]);
-            if (error) { newErrors[key] = error; isValid = false; }
+        Object.keys(formData).forEach((key) => {
+            const err = validateField(key, formData[key]);
+            if (err) {
+                newErrors[key] = err;
+                isValid = false;
+            }
         });
         setErrors(newErrors);
+        setTouched(Object.keys(formData).reduce((a, k) => ((a[k] = true), a), {}));
         return isValid;
     }, [formData, validateField]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (validateForm()) {
-            const submitData = { ...formData };
-            Object.keys(submitData).forEach(key => {
-                if (submitData[key] === '' || submitData[key] === null) delete submitData[key];
-            });
-            submitData.duration = parseInt(submitData.duration) || 0;
-            onSave(submitData);
+        if (!validateForm()) return;
+
+        const submitData = { ...formData };
+
+        // Coerce types
+        submitData.duration = parseInt(submitData.duration, 10) || 0;
+
+        // Convert local datetime strings to ISO for TIMESTAMPTZ columns
+        if (submitData.scheduled_at) {
+            submitData.scheduled_at = new Date(submitData.scheduled_at).toISOString();
         }
+        if (submitData.completed_at) {
+            submitData.completed_at = new Date(submitData.completed_at).toISOString();
+        } else {
+            delete submitData.completed_at;
+        }
+
+        // Drop empty strings / nulls so Postgres doesn't get "" for uuid/timestamptz
+        Object.keys(submitData).forEach((key) => {
+            if (submitData[key] === '' || submitData[key] === null) {
+                delete submitData[key];
+            }
+        });
+
+        onSave?.(submitData);
     };
 
-    const getFieldError = (name) => touched[name] && errors[name] ? errors[name] : '';
+    const getFieldError = (name) => (touched[name] && errors[name] ? errors[name] : '');
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+
+                {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-lg">
                             <Clock className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                            <h2 className="text-lg font-semibold text-gray-900">{mode === 'create' ? 'Add New Activity' : 'Edit Activity'}</h2>
-                            <p className="text-sm text-gray-500">{mode === 'create' ? 'Schedule a call, meeting, task, or note' : `Editing ${activity?.title || 'activity'}`}</p>
+                            <h2 className="text-lg font-semibold text-gray-900">
+                                {mode === 'create' ? 'Add New Activity' : 'Edit Activity'}
+                            </h2>
+                            <p className="text-sm text-gray-500">
+                                {mode === 'create'
+                                    ? 'Schedule a call, meeting, task, or note'
+                                    : `Editing ${activity?.title || 'activity'}`}
+                            </p>
                         </div>
                     </div>
-                    <button onClick={onCancel} className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+                    <button
+                        onClick={onCancel}
+                        className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="overflow-y-auto p-6" style={{ maxHeight: 'calc(90vh - 140px)' }}>
                     <div className="space-y-6">
-                        {/* Basic Information */}
+
+                        {/* Activity Details */}
                         <div>
-                            <h3 className="text-sm font-medium text-gray-700 mb-4 flex items-center gap-2"><Clock className="w-4 h-4" /> Activity Details</h3>
+                            <h3 className="text-sm font-medium text-gray-700 mb-4 flex items-center gap-2">
+                                <Clock className="w-4 h-4" /> Activity Details
+                            </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <InputField
                                     label="Title"
@@ -288,7 +350,9 @@ const ActivityForm = ({
 
                         {/* Related To */}
                         <div>
-                            <h3 className="text-sm font-medium text-gray-700 mb-4 flex items-center gap-2"><Building2 className="w-4 h-4" /> Related To</h3>
+                            <h3 className="text-sm font-medium text-gray-700 mb-4 flex items-center gap-2">
+                                <Building2 className="w-4 h-4" /> Related To
+                            </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <SelectField
                                     label="Related To"
@@ -299,32 +363,38 @@ const ActivityForm = ({
                                     onChange={handleChange}
                                     error={getFieldError('related_to')}
                                 />
-                                <InputField
-                                    label="Related ID"
-                                    name="related_id"
-                                    placeholder="e.g. lead-001, deal-002"
-                                    icon={User}
-                                    value={formData.related_id}
-                                    onChange={handleChange}
-                                    onBlur={handleBlur}
-                                    error={getFieldError('related_id')}
-                                />
-                                <InputField
-                                    label="Related Name"
-                                    name="related_name"
-                                    placeholder="e.g. Website Redesign Project"
-                                    icon={Building2}
-                                    value={formData.related_name}
-                                    onChange={handleChange}
-                                    onBlur={handleBlur}
-                                    error={getFieldError('related_name')}
-                                />
+                                {formData.related_to !== 'none' && (
+                                    <>
+                                        <InputField
+                                            label="Related ID (optional)"
+                                            name="related_id"
+                                            placeholder="Paste UUID or leave blank"
+                                            icon={User}
+                                            value={formData.related_id}
+                                            onChange={handleChange}
+                                            onBlur={handleBlur}
+                                            error={getFieldError('related_id')}
+                                        />
+                                        <InputField
+                                            label="Related Name"
+                                            name="related_name"
+                                            placeholder="e.g. Website Redesign Project"
+                                            icon={Building2}
+                                            value={formData.related_name}
+                                            onChange={handleChange}
+                                            onBlur={handleBlur}
+                                            error={getFieldError('related_name')}
+                                        />
+                                    </>
+                                )}
                             </div>
                         </div>
 
                         {/* Contact & Company */}
                         <div>
-                            <h3 className="text-sm font-medium text-gray-700 mb-4 flex items-center gap-2"><User className="w-4 h-4" /> Contact & Company</h3>
+                            <h3 className="text-sm font-medium text-gray-700 mb-4 flex items-center gap-2">
+                                <User className="w-4 h-4" /> Contact & Company
+                            </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <InputField
                                     label="Contact"
@@ -348,21 +418,23 @@ const ActivityForm = ({
                                 />
                                 <SelectField
                                     label="Owner"
-                                    name="owner"
-                                    options={ownerOptions}
+                                    name="owner_id"
+                                    options={owners.map((o) => ({ value: o.id, label: o.full_name }))}
                                     placeholder="Assign owner"
                                     required
                                     icon={User}
-                                    value={formData.owner}
+                                    value={formData.owner_id}
                                     onChange={handleChange}
-                                    error={getFieldError('owner')}
+                                    error={getFieldError('owner_id')}
                                 />
                             </div>
                         </div>
 
                         {/* Scheduling */}
                         <div>
-                            <h3 className="text-sm font-medium text-gray-700 mb-4 flex items-center gap-2"><Calendar className="w-4 h-4" /> Scheduling</h3>
+                            <h3 className="text-sm font-medium text-gray-700 mb-4 flex items-center gap-2">
+                                <Calendar className="w-4 h-4" /> Scheduling
+                            </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <InputField
                                     label="Scheduled At"
@@ -410,7 +482,7 @@ const ActivityForm = ({
                             </div>
                         </div>
 
-                        {/* Notes & Outcomes */}
+                        {/* Notes */}
                         <div>
                             <h3 className="text-sm font-medium text-gray-700 mb-4">Notes & Outcomes</h3>
                             <div className="space-y-4">
@@ -450,16 +522,31 @@ const ActivityForm = ({
 
                     <div className="flex items-center justify-between pt-6 mt-6 border-t border-gray-200">
                         <div>
-                            {mode === 'edit' && onDelete && (
-                                <button type="button" onClick={onDelete} className="inline-flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium">
+                            {mode === 'edit' && onDelete && activity && (
+                                <button
+                                    type="button"
+                                    onClick={() => onDelete(activity)}
+                                    className="inline-flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium"
+                                >
                                     <Trash2 className="w-4 h-4" /> Delete Activity
                                 </button>
                             )}
                         </div>
                         <div className="flex items-center gap-3">
-                            <button type="button" onClick={onCancel} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm font-medium">Cancel</button>
-                            <button type="submit" disabled={loading} className="inline-flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
-                                <Save className="w-4 h-4" /> {loading ? 'Saving...' : mode === 'create' ? 'Create Activity' : 'Update Activity'}
+                            <button
+                                type="button"
+                                onClick={onCancel}
+                                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg text-sm font-medium"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="inline-flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white rounded-lg hover:opacity-90 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <Save className="w-4 h-4" />
+                                {loading ? 'Saving...' : mode === 'create' ? 'Create Activity' : 'Update Activity'}
                             </button>
                         </div>
                     </div>

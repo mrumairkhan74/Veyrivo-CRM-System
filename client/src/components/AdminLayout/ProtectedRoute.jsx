@@ -1,7 +1,7 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../../store/hooks";
 
-const ProtectedRoute = ({ requiredRole = "user" }) => {
+const ProtectedRoute = ({ requiredRole = "user", children }) => {
     const { user, loading } = useAuth();
 
     if (loading) {
@@ -12,23 +12,16 @@ const ProtectedRoute = ({ requiredRole = "user" }) => {
         );
     }
 
-    if (!user) {
-        return <Navigate to="/login" replace />;
-    }
+    if (!user) return <Navigate to="/login" replace />;
 
     const userRole = user?.role || "user";
 
-    // Admin can access everything
-    if (userRole === "admin") {
-        return <Outlet />;
-    }
-
-    // Regular users can only access dashboard and limited features
     if (requiredRole === "admin" && userRole !== "admin") {
         return <Navigate to="/admin/dashboard" replace />;
     }
 
-    return <Outlet />;
+    return children ?? <Outlet />;
 };
+
 
 export default ProtectedRoute;

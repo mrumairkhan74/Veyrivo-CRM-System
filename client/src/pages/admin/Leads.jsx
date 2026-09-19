@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { Plus, Search, Filter, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import LeadTable from "../../components/AdminLayout/leads/LeadTable";
@@ -6,6 +7,7 @@ import LeadForm from "../../components/AdminLayout/leads/LeadForm";
 import DeleteLead from "../../components/AdminLayout/leads/DeleteLead";
 import { TableSkeleton } from "../../components/AdminLayout/Skeleton";
 import { useLeads } from "../../store/hooks";
+import { useReferenceData } from "../../data/ReferenceData";   // ← NEW
 
 const Leads = () => {
     const {
@@ -27,6 +29,9 @@ const Leads = () => {
         clearError,
     } = useLeads();
 
+    // ← NEW: pull reference arrays
+    const { industries, sources, services, owners } = useReferenceData();
+
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [formMode, setFormMode] = useState("create");
     const [searchTerm, setSearchTerm] = useState("");
@@ -36,13 +41,16 @@ const Leads = () => {
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
-    useEffect(() => {
-        fetchLeads();
-    }, []);
+    // ← REMOVED the first `fetchLeads()` effect (double-fetch on mount)
 
     useEffect(() => {
-        fetchLeads({ page: pagination.page, ...filters, sort: `${sort.field}:${sort.direction}` });
-    }, [pagination.page, filters, sort]);
+        fetchLeads({
+            page: pagination.page,
+            ...filters,
+            search: searchTerm || undefined,
+            sort: `${sort.field}:${sort.direction}`,
+        });
+    }, [pagination.page, filters, sort, searchTerm]);   // ← searchTerm now included
 
     const handleSearch = (e) => {
         setSearchTerm(e.target.value);
@@ -54,13 +62,13 @@ const Leads = () => {
     };
 
     const clearFilters = () => {
-        setFilters({ status: "", temperature: "", source: "" });
+        setFilters({ status: "", temperature: "", source_id: "" });   // ← source → source_id
         setSearchTerm("");
         setPage(1);
     };
 
     const hasActiveFilters = () => {
-        return filters.status || filters.temperature || filters.source || searchTerm;
+        return filters.status || filters.temperature || filters.source_id || searchTerm;
     };
 
     const openCreateModal = () => {
@@ -166,7 +174,7 @@ const Leads = () => {
                     Filters
                     {hasActiveFilters() && (
                         <span className="w-5 h-5 bg-cyan-600 text-white rounded-full text-xs flex items-center justify-center">
-                            {(filters.status ? 1 : 0) + (filters.temperature ? 1 : 0) + (filters.source ? 1 : 0) + (searchTerm ? 1 : 0)}
+                            {(filters.status ? 1 : 0) + (filters.temperature ? 1 : 0) + (filters.source_id ? 1 : 0) + (searchTerm ? 1 : 0)}
                         </span>
                     )}
                 </button>
@@ -211,20 +219,19 @@ const Leads = () => {
                             <option value="unknown">Unknown</option>
                         </select>
                     </div>
+
+                    {/* ← Source filter now uses real UUIDs from the DB */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">Source</label>
                         <select
-                            value={filters.source || ""}
-                            onChange={(e) => handleFilterChange("source", e.target.value)}
+                            value={filters.source_id || ""}
+                            onChange={(e) => handleFilterChange("source_id", e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
                         >
                             <option value="">All Sources</option>
-                            <option value="linkedin">LinkedIn</option>
-                            <option value="referral">Referral</option>
-                            <option value="website">Website</option>
-                            <option value="cold_email">Cold Email</option>
-                            <option value="google">Google</option>
-                            <option value="facebook">Facebook</option>
+                            {sources.map(s => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
                         </select>
                     </div>
                 </div>
@@ -261,9 +268,13 @@ const Leads = () => {
                 <LeadForm
                     mode={formMode}
                     lead={selectedLeadId ? leads.find(l => l.id === selectedLeadId) : null}
-                    onSave={handleSave}
+                    onSave={handleSave}          
                     onCancel={() => { setIsFormOpen(false); setSelectedLeadId(null); }}
                     loading={isLoading}
+                    industries={industries}      
+                    sources={sources}            
+                    services={services}          
+                    owners={owners}              
                 />
             )}
 

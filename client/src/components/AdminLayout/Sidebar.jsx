@@ -20,7 +20,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     const navigate = useNavigate();
     const userName = user?.full_name || user?.email?.split('@')[0] || 'Admin';
     const userRole = user?.role || 'user';
-
+    
     // Filter menu items based on user role
     const allMenuItems = [
         {
@@ -73,6 +73,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         },
     ];
 
+
     // Filter menu items based on user role
     const menuItems = allMenuItems.filter(item => item.roles.includes(userRole));
 
@@ -104,72 +105,71 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             >
                 <div className="h-full flex flex-col overflow-y-auto md:overflow-visible md:h-auto">
                     {/* Mobile Close Button */}
-                <div className="mb-6 flex justify-end md:hidden">
-                    <button
-                        onClick={() => setIsOpen(false)}
-                        className="rounded-lg p-2 hover:bg-slate-100"
-                    >
-                        <X size={22} />
-                    </button>
-                </div>
-
-                {/* User Profile */}
-                <div className="mb-6 flex items-center gap-3 px-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 text-white">
-                        <User size={20} />
+                    <div className="mb-6 flex justify-end md:hidden">
+                        <button
+                            onClick={() => setIsOpen(false)}
+                            className="rounded-lg p-2 hover:bg-slate-100"
+                        >
+                            <X size={22} />
+                        </button>
                     </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-800 truncate">{userName}</p>
-                        <p className="text-xs text-slate-500 truncate">Admin</p>
+
+                    {/* User Profile */}
+                    <div className="mb-6 flex items-center gap-3 px-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 text-white">
+                            <User size={20} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-slate-800 truncate">{userName}</p>
+                            <p className="text-xs text-slate-500 truncate">Admin</p>
+                        </div>
                     </div>
-                </div>
 
-                <p className="mb-4 px-3 text-xs font-bold uppercase tracking-wider text-slate-400">
-                    Main Menu
-                </p>
+                    <p className="mb-4 px-3 text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Main Menu
+                    </p>
 
-                <nav>
-                    <ul className="space-y-2">
-                        {menuItems.map((item) => (
-                            <li key={item.name}>
-                                <NavLink
-                                    to={item.path}
-                                     end={item.path === "/admin/dashboard"}
-                                    onClick={() => setIsOpen(false)}
-                                    className={({ isActive }) =>
-                                        `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${
-                                            isActive
+                    <nav>
+                        <ul className="space-y-2">
+                            {menuItems.map((item) => (
+                                <li key={item.name}>
+                                    <NavLink
+                                        to={item.path}
+                                        end={item.path === "/admin/dashboard"}
+                                        onClick={() => setIsOpen(false)}
+                                        className={({ isActive }) =>
+                                            `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${isActive
                                                 ? "bg-gradient-to-r from-cyan-500 to-purple-600 text-white"
                                                 : "text-slate-600 hover:bg-cyan-50 hover:text-cyan-600"
-                                        }`}
-                                >
-                                    {item.icon}
-                                    {item.name}
-                                </NavLink>
-                            </li>
-                        ))}
-                    </ul>
-                </nav>
+                                            }`}
+                                    >
+                                        {item.icon}
+                                        {item.name}
+                                    </NavLink>
+                                </li>
+                            ))}
+                        </ul>
+                    </nav>
 
-                <div className="mt-8 border-t border-slate-200 pt-4 space-y-2">
-                    <NavLink
-                        to="/admin/settings"
-                        onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-cyan-50 hover:text-cyan-600"
-                    >
-                        <Settings size={20} />
-                        Settings
-                    </NavLink>
-                    
-                    <button
-                        onClick={handleLogout}
-                        className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-red-600 transition hover:bg-red-50 hover:text-red-700"
-                    >
-                        <LogOut size={20} />
-                        Logout
-                    </button>
+                    <div className="mt-8 border-t border-slate-200 pt-4 space-y-2">
+                        <NavLink
+                            to="/admin/settings"
+                            onClick={() => setIsOpen(false)}
+                            className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-cyan-50 hover:text-cyan-600"
+                        >
+                            <Settings size={20} />
+                            Settings
+                        </NavLink>
+
+                        <button
+                            onClick={handleLogout}
+                            className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-red-600 transition hover:bg-red-50 hover:text-red-700"
+                        >
+                            <LogOut size={20} />
+                            Logout
+                        </button>
+                    </div>
                 </div>
-            </div>
             </aside>
         </>
     );

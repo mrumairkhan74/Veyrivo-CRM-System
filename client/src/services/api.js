@@ -11,10 +11,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     },
 });
 
-export const getAuthHeaders = () => {
-    const session = supabase.auth.getSession();
+export const getAuthHeaders = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
     return {
-        'Authorization': `Bearer ${session.data.session?.access_token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         'Content-Type': 'application/json',
     };
 };

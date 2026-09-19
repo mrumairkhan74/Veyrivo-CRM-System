@@ -6,7 +6,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: ['./vitest.setup.js'],
+    setupFiles: ['./vitest.setup.jsx'],
     include: ['src/**/*.test.{js,jsx}', 'src/**/*.spec.{js,jsx}'],
     coverage: {
       provider: 'v8',
@@ -14,5 +14,10 @@ export default defineConfig({
       include: ['src/**/*.{js,jsx}'],
       exclude: ['src/main.jsx', 'src/vite-env.d.ts', 'src/**/*.d.ts'],
     },
+  },
+  esbuild: {
+    jsx: 'automatic',
+    jsxFactory: 'React.createElement',
+    jsxFragment: 'React.Fragment',
   },
 });
