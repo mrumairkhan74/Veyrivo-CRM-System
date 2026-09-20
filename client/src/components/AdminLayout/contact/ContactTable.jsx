@@ -308,7 +308,7 @@ const ContactsTable = ({
                   <div className="flex items-center gap-2">
                     <Briefcase className="w-4 h-4 text-gray-400" />
                     <span className="text-sm text-gray-700">
-                      {contact.job_title || '-'}
+                      {contact.title || '-'}
                     </span>
                   </div>
                 </td>
