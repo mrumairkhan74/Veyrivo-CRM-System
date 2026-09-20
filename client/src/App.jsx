@@ -25,6 +25,8 @@ import Activities from './pages/admin/Activities'
 import Analytics from './pages/admin/Analytics'
 import AIAssistant from './pages/admin/AIAssistant'
 import Settings from './pages/admin/Settings'
+// import Users from './pages/admin/Users'
+// import Users from './pages/admin/Users'
 
 const App = () => {
   const initialize = useAuthStore((state) => state.initialize);
@@ -56,6 +58,7 @@ const App = () => {
           <Route path="analytics" element={<ProtectedRoute requiredRole="admin"><Analytics /></ProtectedRoute>} />
           <Route path="ai" element={<ProtectedRoute requiredRole="admin"><AIAssistant /></ProtectedRoute>} />
           <Route path="settings" element={<ProtectedRoute requiredRole="admin"><Settings /></ProtectedRoute>} />
+          {/* <Route path="users" element={<ProtectedRoute requiredRole="admin"><Users /></ProtectedRoute>} /> */}
           {/* <Route path="users" element={<Users />} /> */}
         </Route>
         <Route path='/login' element={<Login />} />

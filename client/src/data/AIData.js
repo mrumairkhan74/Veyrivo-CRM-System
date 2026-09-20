@@ -1,8 +1,13 @@
 export const aiProviders = [
-    { id: 'openai', name: 'OpenAI GPT-4', models: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'] },
-    { id: 'anthropic', name: 'Anthropic Claude', models: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'] },
-    { id: 'google', name: 'Google Gemini', models: ['gemini-1.5-pro', 'gemini-1.5-flash'] },
-    { id: 'local', name: 'Local LLM (Ollama)', models: ['llama3', 'mistral', 'codellama'] },
+    {
+        id: 'groq',
+        name: 'Groq',
+        models: [
+            'openai/gpt-oss-120b',
+            'openai/gpt-oss-20b',
+            'qwen/qwen3.6-27b',
+        ],
+    },
 ];
 
 export const aiPrompts = {

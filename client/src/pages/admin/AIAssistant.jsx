@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
     Bot, Play, Square, Copy, Download, FileText, Mail, Target,
     Users, History, BarChart3, Lightbulb, Loader2, CheckCircle,
@@ -8,59 +8,86 @@ import { useAI } from '../../store/hooks';
 
 const AIAssistant = () => {
     const [activeTab, setActiveTab] = useState('leadGeneration');
-    const [selectedProvider, setSelectedProvider] = useState('openai');
-    const [selectedModel, setSelectedModel] = useState('gpt-4o');
+    const [selectedProvider, setSelectedProvider] = useState(
+        aiProviders?.[0]?.id || 'openai'
+    );
+    const [selectedModel, setSelectedModel] = useState(
+        aiProviders?.[0]?.models?.[0] || 'gpt-4o'
+    );
     const [formData, setFormData] = useState({});
     const [result, setResult] = useState(null);
     const [showHistory, setShowHistory] = useState(false);
 
-    const { history, usage, loading, generate, fetchHistory, fetchUsage } = useAI();
+    const {
+        history: rawHistory,
+        usage: rawUsage,
+        loading,
+        generate,
+        fetchHistory,
+        fetchUsage,
+    } = useAI();
 
-    const provider = aiProviders.find((p) => p.id === selectedProvider) || aiProviders[0];
-    const promptConfig = aiPrompts[activeTab] || Object.values(aiPrompts)[0];
+    // Safe defaults — never let these be undefined in the render tree
+    const history = Array.isArray(rawHistory) ? rawHistory : [];
+    const usage = rawUsage ?? {};
+
+    const provider =
+        aiProviders?.find((p) => p.id === selectedProvider) || aiProviders?.[0];
+    const promptConfig =
+        aiPrompts?.[activeTab] || Object.values(aiPrompts || {})[0] || null;
 
     // Reset form whenever the tab changes
     useEffect(() => {
         const initial = {};
-        (promptConfig?.parameters || []).forEach((p) => { initial[p] = ''; });
+        (promptConfig?.parameters || []).forEach((p) => {
+            const key = typeof p === 'string' ? p : p?.name;
+            if (key) initial[key] = '';
+        });
         setFormData(initial);
         setResult(null);
-    }, [activeTab, promptConfig]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab]);
 
-    // Load history + usage once
+    // Load history + usage once. Safe even if the hook doesn't expose these.
     useEffect(() => {
-        fetchHistory().catch(() => {});
-        fetchUsage().catch(() => {});
+        Promise.resolve(fetchHistory?.()).catch(() => {});
+        Promise.resolve(fetchUsage?.()).catch(() => {});
     }, [fetchHistory, fetchUsage]);
 
-    // Recompute usage breakdown from history (client-side)
-    const usageSummary = (() => {
+    // Usage summary — memoized and guarded
+    const usageSummary = useMemo(() => {
         const now = new Date();
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         const thisMonth = { requests: 0, tokens: 0, cost: 0 };
         const byProvider = {};
 
-        (history || []).forEach((h) => {
-            const createdAt = h.created_at ? new Date(h.created_at) : null;
+        history.forEach((h) => {
+            const createdAt = h?.created_at ? new Date(h.created_at) : null;
             if (createdAt && createdAt >= monthStart) {
                 thisMonth.requests += 1;
-                thisMonth.tokens += h.tokens_used || 0;
-                thisMonth.cost += parseFloat(h.cost_usd || 0);
+                thisMonth.tokens += h?.tokens_used || 0;
+                thisMonth.cost += parseFloat(h?.cost_usd || 0);
             }
-            const p = h.provider || 'unknown';
+            const p = h?.provider || 'unknown';
             if (!byProvider[p]) byProvider[p] = { requests: 0, cost: 0 };
             byProvider[p].requests += 1;
-            byProvider[p].cost += parseFloat(h.cost_usd || 0);
+            byProvider[p].cost += parseFloat(h?.cost_usd || 0);
         });
 
         return {
-            totalRequests: usage?.totalRequests ?? (history?.length || 0),
+            totalRequests: usage?.totalRequests ?? history.length,
             totalTokens: usage?.totalTokens ?? 0,
             totalCost: usage?.totalCost ?? 0,
             thisMonth,
             byProvider,
         };
-    })();
+    }, [history, usage]);
+
+    const successRate = useMemo(() => {
+        if (!history.length) return '—';
+        const completed = history.filter((h) => h?.status === 'completed').length;
+        return `${((completed / history.length) * 100).toFixed(1)}%`;
+    }, [history]);
 
     const handleInputChange = (field, value) =>
         setFormData((prev) => ({ ...prev, [field]: value }));
@@ -74,32 +101,38 @@ const AIAssistant = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (typeof generate !== 'function') {
+            setResult('Error: AI service is not available in this build.');
+            return;
+        }
         setResult(null);
         try {
-            const response = await generate(activeTab, formData, selectedProvider, selectedModel);
-            // Best-effort text extraction from varying backend shapes
+            const response = await generate(
+                activeTab,
+                formData,
+                selectedProvider,
+                selectedModel
+            );
             const text =
                 typeof response === 'string'
                     ? response
-                    : response?.output_data?.text
-                    || response?.output_data?.content
-                    || response?.output_data
-                    || JSON.stringify(response, null, 2);
+                    : response?.output_data?.text ??
+                      response?.output_data?.content ??
+                      response?.output_data ??
+                      JSON.stringify(response, null, 2);
             setResult(typeof text === 'string' ? text : JSON.stringify(text, null, 2));
         } catch (err) {
-            setResult(`Error: ${err.message}`);
+            setResult(`Error: ${err?.message || String(err)}`);
         }
     };
 
     const handleCopy = () => {
-        const text = result || '';
-        if (text) navigator.clipboard.writeText(text);
+        if (result) navigator.clipboard.writeText(result);
     };
 
     const handleDownload = () => {
-        const text = result || '';
-        if (!text) return;
-        const blob = new Blob([text], { type: 'text/plain' });
+        if (!result) return;
+        const blob = new Blob([result], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -157,8 +190,12 @@ const AIAssistant = () => {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                     <p className="text-sm text-gray-600">Total Requests</p>
-                    <p className="mt-1 text-2xl font-bold text-gray-900">{usageSummary.totalRequests}</p>
-                    <p className="mt-1 text-xs text-emerald-600">+{usageSummary.thisMonth.requests} this month</p>
+                    <p className="mt-1 text-2xl font-bold text-gray-900">
+                        {usageSummary.totalRequests}
+                    </p>
+                    <p className="mt-1 text-xs text-emerald-600">
+                        +{usageSummary.thisMonth.requests} this month
+                    </p>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                     <p className="text-sm text-gray-600">Tokens Used</p>
@@ -171,7 +208,9 @@ const AIAssistant = () => {
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                     <p className="text-sm text-gray-600">Total Cost</p>
-                    <p className="mt-1 text-2xl font-bold text-gray-900">{formatCost(usageSummary.totalCost)}</p>
+                    <p className="mt-1 text-2xl font-bold text-gray-900">
+                        {formatCost(usageSummary.totalCost)}
+                    </p>
                     <p className="mt-1 text-xs text-emerald-600">
                         +{formatCost(usageSummary.thisMonth.cost)} this month
                     </p>
@@ -179,9 +218,7 @@ const AIAssistant = () => {
                 <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                     <p className="text-sm text-gray-600">Success Rate</p>
                     <p className="mt-1 text-2xl font-bold text-gray-900">
-                        {history.length
-                            ? `${((history.filter((h) => h.status === 'completed').length / history.length) * 100).toFixed(1)}%`
-                            : '—'}
+                        {successRate}
                     </p>
                     <p className="mt-1 text-xs text-gray-500">Based on history</p>
                 </div>
@@ -191,42 +228,56 @@ const AIAssistant = () => {
             <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
                 <div className="overflow-x-auto border-b border-gray-200">
                     <nav className="flex gap-1 p-1" role="tablist">
-                        {tabs.map((tab) => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                role="tab"
-                                aria-selected={activeTab === tab.id}
-                                className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-all ${
-                                    activeTab === tab.id
-                                        ? 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white shadow-sm'
-                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                                }`}
-                            >
-                                <tab.icon className="h-4 w-4" />
-                                <span className="hidden sm:inline">{tab.label}</span>
-                            </button>
-                        ))}
+                        {tabs.map((tab) => {
+                            const Icon = tab.icon;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    role="tab"
+                                    aria-selected={activeTab === tab.id}
+                                    className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+                                        activeTab === tab.id
+                                            ? 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white shadow-sm'
+                                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                    }`}
+                                >
+                                    <Icon className="h-4 w-4" />
+                                    <span className="hidden sm:inline">{tab.label}</span>
+                                </button>
+                            );
+                        })}
                     </nav>
                 </div>
 
                 <div className="p-4 sm:p-6">
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            {(promptConfig?.parameters || []).map((param) => (
-                                <div key={param} className="space-y-1.5">
-                                    <label className="block text-sm font-medium capitalize text-gray-700">
-                                        {param.replace(/_/g, ' ')}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={formData[param] || ''}
-                                        onChange={(e) => handleInputChange(param, e.target.value)}
-                                        placeholder={`Enter ${param.replace(/_/g, ' ')}`}
-                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-transparent focus:ring-2 focus:ring-cyan-500"
-                                    />
-                                </div>
-                            ))}
+                            {(promptConfig?.parameters || []).map((param) => {
+                                const key =
+                                    typeof param === 'string' ? param : param?.name;
+                                if (!key) return null;
+                                const label =
+                                    typeof param === 'string'
+                                        ? param.replace(/_/g, ' ')
+                                        : param.label || key.replace(/_/g, ' ');
+                                return (
+                                    <div key={key} className="space-y-1.5">
+                                        <label className="block text-sm font-medium capitalize text-gray-700">
+                                            {label}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData[key] || ''}
+                                            onChange={(e) =>
+                                                handleInputChange(key, e.target.value)
+                                            }
+                                            placeholder={`Enter ${label}`}
+                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-transparent focus:ring-2 focus:ring-cyan-500"
+                                        />
+                                    </div>
+                                );
+                            })}
                         </div>
 
                         <div className="flex flex-col items-stretch gap-3 border-t border-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-end">
@@ -236,17 +287,19 @@ const AIAssistant = () => {
                                 className="w-full rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 sm:w-auto"
                             >
                                 <History className="mr-1 inline h-4 w-4" />
-                                History
+                                {showHistory ? 'Hide History' : 'History'}
                             </button>
-                            <button
-                                type="button"
-                                onClick={() => {}}
-                                disabled={!loading}
-                                className="w-full rounded-lg px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50 sm:w-auto"
-                            >
-                                <Square className="mr-1 inline h-4 w-4" />
-                                Stop
-                            </button>
+                            {loading && (
+                                <button
+                                    type="button"
+                                    disabled
+                                    title="Cancellation not supported by the current API"
+                                    className="w-full rounded-lg px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50 sm:w-auto"
+                                >
+                                    <Square className="mr-1 inline h-4 w-4" />
+                                    Stop
+                                </button>
+                            )}
                             <button
                                 type="submit"
                                 disabled={loading}
@@ -273,10 +326,18 @@ const AIAssistant = () => {
                             <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <h3 className="font-semibold text-gray-900">AI Response</h3>
                                 <div className="flex items-center gap-2">
-                                    <button onClick={handleCopy} className="rounded p-2 transition hover:bg-gray-200" title="Copy">
+                                    <button
+                                        onClick={handleCopy}
+                                        className="rounded p-2 transition hover:bg-gray-200"
+                                        title="Copy"
+                                    >
                                         <Copy className="h-4 w-4" />
                                     </button>
-                                    <button onClick={handleDownload} className="rounded p-2 transition hover:bg-gray-200" title="Download">
+                                    <button
+                                        onClick={handleDownload}
+                                        className="rounded p-2 transition hover:bg-gray-200"
+                                        title="Download"
+                                    >
                                         <Download className="h-4 w-4" />
                                     </button>
                                 </div>
@@ -292,14 +353,19 @@ const AIAssistant = () => {
                     {/* History */}
                     {showHistory && (
                         <div className="mt-6">
-                            <h3 className="mb-3 font-semibold text-gray-900">Generation History</h3>
+                            <h3 className="mb-3 font-semibold text-gray-900">
+                                Generation History
+                            </h3>
                             <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
                                 <div className="overflow-x-auto">
                                     <table className="w-full min-w-[800px]">
                                         <thead className="border-b border-gray-200 bg-gray-50">
                                             <tr>
                                                 {['Type', 'Provider', 'Model', 'Status', 'Tokens', 'Cost', 'Time'].map((h) => (
-                                                    <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                                                    <th
+                                                        key={h}
+                                                        className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500"
+                                                    >
                                                         {h}
                                                     </th>
                                                 ))}
@@ -309,25 +375,34 @@ const AIAssistant = () => {
                                             {history.slice(0, 10).map((item) => (
                                                 <tr key={item.id} className="hover:bg-gray-50">
                                                     <td className="px-4 py-3 text-sm capitalize">
-                                                        {item.type?.replace(/([A-Z])/g, ' $1').trim() || '—'}
+                                                        {item.type
+                                                            ?.replace(/([A-Z])/g, ' $1')
+                                                            .trim() || '—'}
                                                     </td>
                                                     <td className="px-4 py-3 text-sm">
-                                                        {aiProviders.find((p) => p.id === item.provider)?.name || item.provider}
+                                                        {aiProviders.find((p) => p.id === item.provider)?.name ||
+                                                            item.provider}
                                                     </td>
-                                                    <td className="px-4 py-3 font-mono text-sm">{item.model}</td>
+                                                    <td className="px-4 py-3 font-mono text-sm">
+                                                        {item.model}
+                                                    </td>
                                                     <td className="px-4 py-3">
-                                                        <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                                                            item.status === 'completed'
-                                                                ? 'bg-emerald-50 text-emerald-700'
-                                                                : 'bg-amber-50 text-amber-700'
-                                                        }`}>
+                                                        <span
+                                                            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                                                                item.status === 'completed'
+                                                                    ? 'bg-emerald-50 text-emerald-700'
+                                                                    : 'bg-amber-50 text-amber-700'
+                                                            }`}
+                                                        >
                                                             {item.status === 'completed' ? (
                                                                 <>
-                                                                    <CheckCircle className="mr-1 h-3 w-3" /> Completed
+                                                                    <CheckCircle className="mr-1 h-3 w-3" />
+                                                                    Completed
                                                                 </>
                                                             ) : (
                                                                 <>
-                                                                    <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Processing
+                                                                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                                                    Processing
                                                                 </>
                                                             )}
                                                         </span>
@@ -339,13 +414,18 @@ const AIAssistant = () => {
                                                         {formatCost(item.cost_usd)}
                                                     </td>
                                                     <td className="px-4 py-3 text-sm text-gray-500">
-                                                        {item.created_at ? new Date(item.created_at).toLocaleString() : '—'}
+                                                        {item.created_at
+                                                            ? new Date(item.created_at).toLocaleString()
+                                                            : '—'}
                                                     </td>
                                                 </tr>
                                             ))}
                                             {history.length === 0 && (
                                                 <tr>
-                                                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
+                                                    <td
+                                                        colSpan={7}
+                                                        className="px-4 py-8 text-center text-sm text-gray-500"
+                                                    >
                                                         No generations yet
                                                     </td>
                                                 </tr>
@@ -369,27 +449,32 @@ const AIAssistant = () => {
                     {Object.keys(usageSummary.byProvider).length === 0 && (
                         <p className="text-sm text-gray-500">No usage recorded yet.</p>
                     )}
-                    {Object.entries(usageSummary.byProvider).map(([providerId, stats]) => {
-                        const info = aiProviders.find((p) => p.id === providerId);
-                        const total = usageSummary.totalRequests || 1;
-                        const percentage = Math.round((stats.requests / total) * 100);
-                        return (
-                            <div key={providerId} className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                                <div className="w-full text-sm font-medium text-gray-700 sm:w-24">
-                                    {info?.name || providerId}
+                    {Object.entries(usageSummary.byProvider).map(
+                        ([providerId, stats]) => {
+                            const info = aiProviders.find((p) => p.id === providerId);
+                            const total = usageSummary.totalRequests || 1;
+                            const percentage = Math.round((stats.requests / total) * 100);
+                            return (
+                                <div
+                                    key={providerId}
+                                    className="flex flex-col gap-3 sm:flex-row sm:items-center"
+                                >
+                                    <div className="w-full text-sm font-medium text-gray-700 sm:w-24">
+                                        {info?.name || providerId}
+                                    </div>
+                                    <div className="h-3 flex-1 overflow-hidden rounded-full bg-gray-100">
+                                        <div
+                                            className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 transition-all"
+                                            style={{ width: `${percentage}%` }}
+                                        />
+                                    </div>
+                                    <div className="w-full text-right text-sm text-gray-600 sm:w-32">
+                                        {stats.requests} req · {formatCost(stats.cost)}
+                                    </div>
                                 </div>
-                                <div className="h-3 flex-1 overflow-hidden rounded-full bg-gray-100">
-                                    <div
-                                        className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 transition-all"
-                                        style={{ width: `${percentage}%` }}
-                                    />
-                                </div>
-                                <div className="w-full text-right text-sm text-gray-600 sm:w-32">
-                                    {stats.requests} req · {formatCost(stats.cost)}
-                                </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        }
+                    )}
                 </div>
             </div>
         </div>

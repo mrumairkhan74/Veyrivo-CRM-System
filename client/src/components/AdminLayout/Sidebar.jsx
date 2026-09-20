@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
     LayoutDashboard,
     Users,
@@ -18,9 +19,12 @@ import { useAuth } from "../../store/hooks";
 const Sidebar = ({ isOpen, setIsOpen }) => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const userName = user?.full_name || user?.email?.split('@')[0] || 'Admin';
-    const userRole = user?.role || 'user';
-    
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    const userName =
+        user?.full_name || user?.email?.split("@")[0] || "Admin";
+    const userRole = user?.role || "user";
+
     // Filter menu items based on user role
     const allMenuItems = [
         {
@@ -71,15 +75,30 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             path: "/admin/ai",
             roles: ["admin"],
         },
+        // {
+        //     name: "Users",
+        //     icon: <User size={20} />,
+        //     path: "/admin/users",
+        //     roles: ["admin"],
+        // },
     ];
 
-
-    // Filter menu items based on user role
-    const menuItems = allMenuItems.filter(item => item.roles.includes(userRole));
+    const menuItems = allMenuItems.filter((item) =>
+        item.roles.includes(userRole)
+    );
 
     const handleLogout = async () => {
-        await logout();
-        navigate('/login');
+        if (isLoggingOut) return; // prevent double-clicks
+        setIsLoggingOut(true);
+        try {
+            await logout?.(); // clear token / state / cache
+        } catch (err) {
+            console.error("Logout error:", err);
+        } finally {
+            // Always redirect, even if the API call failed
+            navigate("/login", { replace: true });
+            setIsLoggingOut(false);
+        }
     };
 
     return (
@@ -92,39 +111,46 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 />
             )}
 
+            {/* Sidebar shell: fixed height, flex column, never grows past viewport */}
             <aside
                 className={`
-                    fixed left-0 top-0 z-50 h-screen w-64
-                    border-r border-slate-200 bg-white p-4
+                    fixed left-0 top-0 z-50 flex h-screen h-dvh w-64 flex-col
+                    border-r border-slate-200 bg-white
                     transition-transform duration-300
 
                     ${isOpen ? "translate-x-0" : "-translate-x-full"}
 
-                    md:static md:min-h-screen md:translate-x-0
+                    md:static md:h-screen md:h-dvh md:translate-x-0
                 `}
             >
-                <div className="h-full flex flex-col overflow-y-auto md:overflow-visible md:h-auto">
-                    {/* Mobile Close Button */}
-                    <div className="mb-6 flex justify-end md:hidden">
-                        <button
-                            onClick={() => setIsOpen(false)}
-                            className="rounded-lg p-2 hover:bg-slate-100"
-                        >
-                            <X size={22} />
-                        </button>
-                    </div>
+                {/* Mobile Close Button — fixed at top */}
+                <div className="flex shrink-0 justify-end p-3 md:hidden">
+                    <button
+                        onClick={() => setIsOpen(false)}
+                        aria-label="Close sidebar"
+                        className="rounded-lg p-2 hover:bg-slate-100"
+                    >
+                        <X size={22} />
+                    </button>
+                </div>
 
-                    {/* User Profile */}
-                    <div className="mb-6 flex items-center gap-3 px-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 text-white">
-                            <User size={20} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-slate-800 truncate">{userName}</p>
-                            <p className="text-xs text-slate-500 truncate">Admin</p>
-                        </div>
+                {/* User Profile — fixed at top */}
+                <div className="flex shrink-0 items-center gap-3 px-5 pb-4 pt-3 md:pt-6">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 text-white">
+                        <User size={20} />
                     </div>
+                    <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-800">
+                            {userName}
+                        </p>
+                        <p className="truncate text-xs capitalize text-slate-500">
+                            {userRole}
+                        </p>
+                    </div>
+                </div>
 
+                {/* Scrollable area — takes remaining height and scrolls internally */}
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 [scrollbar-width:thin]">
                     <p className="mb-4 px-3 text-xs font-bold uppercase tracking-wider text-slate-400">
                         Main Menu
                     </p>
@@ -135,13 +161,17 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                                 <li key={item.name}>
                                     <NavLink
                                         to={item.path}
-                                        end={item.path === "/admin/dashboard"}
+                                        end={
+                                            item.path === "/admin/dashboard"
+                                        }
                                         onClick={() => setIsOpen(false)}
                                         className={({ isActive }) =>
-                                            `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${isActive
-                                                ? "bg-gradient-to-r from-cyan-500 to-purple-600 text-white"
-                                                : "text-slate-600 hover:bg-cyan-50 hover:text-cyan-600"
-                                            }`}
+                                            `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${
+                                                isActive
+                                                    ? "bg-gradient-to-r from-cyan-500 to-purple-600 text-white"
+                                                    : "text-slate-600 hover:bg-cyan-50 hover:text-cyan-600"
+                                            }`
+                                        }
                                     >
                                         {item.icon}
                                         {item.name}
@@ -151,11 +181,18 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                         </ul>
                     </nav>
 
-                    <div className="mt-8 border-t border-slate-200 pt-4 space-y-2">
+                    {/* Bottom section — scrolls with the menu on short screens */}
+                    <div className="mt-8 space-y-2 border-t border-slate-200 pt-4">
                         <NavLink
                             to="/admin/settings"
                             onClick={() => setIsOpen(false)}
-                            className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-cyan-50 hover:text-cyan-600"
+                            className={({ isActive }) =>
+                                `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${
+                                    isActive
+                                        ? "bg-gradient-to-r from-cyan-500 to-purple-600 text-white"
+                                        : "text-slate-600 hover:bg-cyan-50 hover:text-cyan-600"
+                                }`
+                            }
                         >
                             <Settings size={20} />
                             Settings
@@ -163,10 +200,11 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
                         <button
                             onClick={handleLogout}
-                            className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-red-600 transition hover:bg-red-50 hover:text-red-700"
+                            disabled={isLoggingOut}
+                            className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-red-600 transition hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             <LogOut size={20} />
-                            Logout
+                            {isLoggingOut ? "Logging out..." : "Logout"}
                         </button>
                     </div>
                 </div>

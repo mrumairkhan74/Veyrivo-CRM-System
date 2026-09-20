@@ -76,17 +76,11 @@ const DealCard = ({ deal, onView, onEdit, onDelete, formatCurrency, formatDate, 
     return (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 hover:shadow-md transition-shadow">
             {/* Header */}
-            <div className="flex items-start justify-between mb-3">
-                <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900 truncate">{deal.title}</h4>
-                    <p className="text-xs text-gray-500 truncate mt-0.5">{deal.company}</p>
-                </div>
-                <button
-                    onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
-                    className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
-                >
-                    <MoreVertical className="w-4 h-4" />
-                </button>
+            <div className="flex-1 min-w-0">
+                <h4 className="font-medium text-gray-900 truncate">{deal.title}</h4>
+                <p className="text-xs text-gray-500 truncate mt-0.5">
+                    {deal.company?.name || 'No company'}
+                </p>
             </div>
 
             {/* Value & Probability */}

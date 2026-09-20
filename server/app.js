@@ -14,6 +14,7 @@ const dealsRoutes = require('./routes/deals');
 const activitiesRoutes = require('./routes/activities');
 const analyticsRoutes = require('./routes/analytics');
 const aiRoutes = require('./routes/ai');
+const teamRoutes = require('./routes/team');
 const { errorHandler } = require('./middleware/errorHandler');
 const { authenticate } = require('./middleware/auth');
 
@@ -40,7 +41,7 @@ const startKeepAlive = () => {
       console.error('[Keep-Alive] Error:', err.message);
     }
   }, KEEP_ALIVE_INTERVAL);
-  
+
   console.log(`[Keep-Alive] Started - pinging DB every ${KEEP_ALIVE_INTERVAL / 60000} minutes`);
 };
 
@@ -91,6 +92,7 @@ app.use('/api/v1/deals', authenticate, dealsRoutes);
 app.use('/api/v1/activities', authenticate, activitiesRoutes);
 app.use('/api/v1/analytics', authenticate, analyticsRoutes);
 app.use('/api/v1/ai', authenticate, aiRoutes);
+app.use('/api/v1/team', authenticate, teamRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -105,7 +107,7 @@ const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-  
+
   // Start keep-alive after server starts
   startKeepAlive();
 });
