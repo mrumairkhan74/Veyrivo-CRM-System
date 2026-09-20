@@ -101,7 +101,7 @@ const DealCard = ({ deal, onView, onEdit, onDelete, formatCurrency, formatDate, 
             <div className="space-y-2 text-sm text-gray-600 mb-3">
                 <div className="flex items-center gap-1.5">
                     <Users className="w-3.5 h-3.5" />
-                    <span className="truncate">{deal.contact}</span>
+                    <span className="truncate">{deal.contact?.first_name} {deal.contact?.last_name}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5" />
@@ -109,7 +109,7 @@ const DealCard = ({ deal, onView, onEdit, onDelete, formatCurrency, formatDate, 
                 </div>
                 <div className="flex items-center gap-1.5">
                     <Target className="w-3.5 h-3.5" />
-                    <span className="truncate">{deal.owner}</span>
+                    <span className="truncate">{deal.owner?.full_name}</span>
                 </div>
             </div>
 
